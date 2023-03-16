@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "hallucinated-preference-based-rl"
+version = "0.1.0"
+description = ""
+authors = ["Chen Bo Calvin Zhang"]
+readme = "README.md"
+packages = [{include = "hallucinated_preference_based_rl"}]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+mujoco = "^2.3.2"
+gym = "^0.26.2"
+imageio = "^2.26.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

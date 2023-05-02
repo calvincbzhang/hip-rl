@@ -1,1 +1,1 @@
-# hallucinated-preference-based-rl
+# gaussian-process-preference-based-rl

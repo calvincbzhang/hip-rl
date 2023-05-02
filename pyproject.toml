@@ -1,10 +1,10 @@
 [tool.poetry]
-name = "hallucinated-preference-based-rl"
+name = "gaussian-process-preference-based-rl"
 version = "0.1.0"
 description = ""
 authors = ["Chen Bo Calvin Zhang"]
 readme = "README.md"
-packages = [{include = "hallucinated_preference_based_rl"}]
+packages = [{include = "gaussian_process_preference_based_rl"}]
 license = "MIT"
 
 [tool.poetry.dependencies]

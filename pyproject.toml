@@ -13,6 +13,7 @@ mujoco = "^2.3.2"
 gym = "^0.26.2"
 imageio = "^2.26.0"
 gpytorch = "^1.9.1"
+pyyaml = "^6.0"
 
 
 [build-system]

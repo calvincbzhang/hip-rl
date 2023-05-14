@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from transition_model import GPTransitionModel
+from reward_model import RewardModel
 
 
 class HPbUCRL:
@@ -9,25 +10,26 @@ class HPbUCRL:
 
         self.env = env
         self.state_dim = env.observation_space.shape[0]
-        self.n_actions = env.action_space.shape[0]
+        self.action_dim = env.action_space.shape[0]
 
         # TODO: initialize parameters
         self.horizon = config['horizon']
         self.train_epochs = config['train_epochs']
 
         state = torch.zeros(1, self.state_dim)
-        action = torch.zeros(1, self.n_actions)
+        action = torch.zeros(1, self.action_dim)
         next_state = torch.zeros(1, self.state_dim)
 
+        # initialize transition model
         self.transition_model = GPTransitionModel(state, action, next_state)
-        # TODO: initialize reward model
-        self.reward_model = None
+        # initialize reward model
+        self.reward_model = RewardModel(self.state_dim, self.action_dim)
         # TODO: initialize policy
         self.policy = None
 
         self.T = []
         self.R = []
-        self.P = {}
+        self.P = []
     
     def train(self):
         # append random initial trajectory to T
@@ -43,11 +45,11 @@ class HPbUCRL:
 
             s = s_next
             reward += r
-            tau.append((a, s_next))
+            tau.append(a)
+            tau.append(s_next)
 
         self.T.append(tau)
         self.R.append(reward)
-        self.P[0] = []
 
         # train for n_episodes
         for k in range(self.train_epochs):
@@ -64,10 +66,12 @@ class HPbUCRL:
 
                 s = s_next
                 reward += r
-                tau.append((a, s_next))
+                tau.append(a)
+                tau.append(s_next)
 
             # sample old trajectory and its reward
             idx = np.random.randint(len(self.T))
+            tau_old = self.T[idx]
             reward_old = self.R[idx]
 
             self.T.append(tau)
@@ -76,15 +80,14 @@ class HPbUCRL:
             # TODO: add stochasticity to the preference
             # compute binary preference between new and old trajectory
             if reward > reward_old:
-                self.P[k+1] = [idx]
+                self.P.append([tau, tau_old, 1])
             else:
-                self.P[k+1] = []
-                self.P[idx].append(k+1)
+                self.P.append([tau_old, tau, 0])
 
-            # TODO: estimate reward
+            # estimate reward
+            self.reward_model.train(self.P)
             # estimate transition model
             self.transition_model.train()
-            print("===========================================================")
             # TODO: estimate policy
         
         return

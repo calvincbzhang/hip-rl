@@ -114,3 +114,6 @@ class GPTransitionModel(nn.Module):
             return train_x
         train_y = next_state.t().contiguous()
         return train_x, train_y
+    
+
+    # TODO: calibrate model

@@ -1,5 +1,7 @@
 import numpy as np
-from collections import deque
+import torch
+
+from transition_model import GPTransitionModel
 
 
 class HPbUCRL:
@@ -13,9 +15,14 @@ class HPbUCRL:
         self.horizon = config['horizon']
         self.train_epochs = config['train_epochs']
 
-        # TODO: initialize models and policy
-        self.transition_model = None
+        state = torch.zeros(1, self.state_dim)
+        action = torch.zeros(1, self.n_actions)
+        next_state = torch.zeros(1, self.state_dim)
+
+        self.transition_model = GPTransitionModel(state, action, next_state)
+        # TODO: initialize reward model
         self.reward_model = None
+        # TODO: initialize policy
         self.policy = None
 
         self.T = []
@@ -30,6 +37,9 @@ class HPbUCRL:
         for _ in range(self.horizon):
             a = self.env.action_space.sample()
             s_next, r, _, _, _ = self.env.step(a)
+
+            # add data to the transition model
+            self.transition_model.add_data(torch.tensor(s), torch.tensor(a), torch.tensor(s_next))
 
             s = s_next
             reward += r
@@ -48,6 +58,9 @@ class HPbUCRL:
                 # TODO: sample action from policy and to plan step in algorithm
                 a = self.env.action_space.sample()
                 s_next, r, _, _, _ = self.env.step(a)
+
+                # add data to the transition model
+                self.transition_model.add_data(torch.tensor(s), torch.tensor(a), torch.tensor(s_next))
 
                 s = s_next
                 reward += r
@@ -69,7 +82,9 @@ class HPbUCRL:
                 self.P[idx].append(k+1)
 
             # TODO: estimate reward
-            # TODO: estimate transition model
+            # estimate transition model
+            self.transition_model.train()
+            print("===========================================================")
             # TODO: estimate policy
         
         return

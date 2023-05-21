@@ -60,3 +60,7 @@ class RewardModel(nn.Module):
             if epoch == 99:
                 print(f"Epoch {epoch + 1} | Loss {loss:.4f}")
 
+    def predict(self, states, actions):
+        inputs = torch.cat((states, actions), dim=-1)
+        rewards = self.reward_fn(inputs)
+        return rewards.squeeze()

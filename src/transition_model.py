@@ -1,6 +1,7 @@
 import gpytorch
 import torch
 from torch import nn
+import numpy as np
 
 
 class ExactGPModel(gpytorch.models.ExactGP):
@@ -115,5 +116,11 @@ class GPTransitionModel(nn.Module):
         train_y = next_state.t().contiguous()
         return train_x, train_y
     
+    def generate_batch(self, batch_size):
+        indices = np.random.choice(len(self.state), size=batch_size, replace=False)
+        batch_state = torch.stack([self.state[i] for i in indices])
+        batch_action = torch.stack([self.action[i] for i in indices])
+        batch_next_state = torch.stack([self.next_state[i] for i in indices])
+        return batch_state, batch_action, batch_next_state
 
     # TODO: calibrate model

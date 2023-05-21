@@ -3,6 +3,7 @@ import torch
 
 from transition_model import GPTransitionModel
 from reward_model import RewardModel
+from policy import Policy
 
 
 class HPbUCRL:
@@ -24,8 +25,8 @@ class HPbUCRL:
         self.transition_model = GPTransitionModel(state, action, next_state)
         # initialize reward model
         self.reward_model = RewardModel(self.state_dim, self.action_dim)
-        # TODO: initialize policy
-        self.policy = None
+        # initialize policy
+        self.policy = Policy(self.state_dim, self.action_dim)
 
         self.T = []
         self.R = []
@@ -57,8 +58,8 @@ class HPbUCRL:
             tau = [s]
             reward = 0
             for t in range(self.horizon):
-                # TODO: sample action from policy and to plan step in algorithm
-                a = self.env.action_space.sample()
+                # sample action from policy and to plan step in algorithm
+                a = self.policy.sample_action(s)
                 s_next, r, _, _, _ = self.env.step(a)
 
                 # add data to the transition model
@@ -77,6 +78,8 @@ class HPbUCRL:
             self.T.append(tau)
             self.R.append(reward)
 
+            print(self.R)
+
             # TODO: add stochasticity to the preference
             # compute binary preference between new and old trajectory
             if reward > reward_old:
@@ -88,6 +91,7 @@ class HPbUCRL:
             self.reward_model.train(self.P)
             # estimate transition model
             self.transition_model.train()
-            # TODO: estimate policy
+            # train policy
+            self.policy.train_policy(self.transition_model, self.reward_model)
         
         return

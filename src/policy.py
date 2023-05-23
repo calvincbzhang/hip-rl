@@ -3,6 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+import numpy as np
+
 class Policy(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(Policy, self).__init__()
@@ -85,50 +87,61 @@ class Policy(nn.Module):
             trajectories.append((states, actions))
 
         return trajectories
+    
+    def soft_update_target_networks(self, network, target_network, tau=0.01):
+        for network_param, target_network_param in zip(network.parameters(), target_network.parameters()):
+            target_network_param.data.copy_(tau * network_param.data + (1.0 - tau) * target_network_param.data)
 
-    def train_policy(self, transition_model, reward_model, epochs=5, batch_size=8, learning_rate=1e-3, gamma=0.99):
-        optimizer = optim.Adam(self.parameters(), lr=learning_rate)
-        # Simulate trajectories using the transition model and the current policy
-        trajectories = self.simulate_model(transition_model, n_trajectories=batch_size)
+    def train_policy(self, transition_model, reward_model, epochs=5, batch_size=4, learning_rate=1e-3, gamma=0.99):
+        criterion = nn.MSELoss()
+        optimizer_actor = optim.Adam(self.actor.parameters(), lr=learning_rate)
+        optimizer_critic = optim.Adam(self.critic.parameters(), lr=learning_rate)
 
-        for _ in range(epochs):
-            optimizer.zero_grad()
+        for epoch in range(epochs):
+            # Sample trajectories using the transition model
+            trajectories = self.simulate_model(transition_model, n_trajectories=batch_size)
 
-            # Compute the loss
-            total_loss = 0.0
+            optimizer_actor.zero_grad()
+            optimizer_critic.zero_grad()
+
+            actor_losses = []
+            critic_losses = []
+
             for states, actions in trajectories:
                 states = torch.stack(states[:-1])
                 actions = torch.stack(actions)
 
-                # Compute the reward
-                rewards = reward_model.predict(states, actions)
+                # Compute the predicted rewards using the reward model
+                predicted_rewards = reward_model.predict(states, actions)
 
-                # Compute actor and critic outputs
-                actor_outputs, critic_outputs = self.forward(states)
+                # Compute the state-value targets using the critic target network
+                critic_targets = self.critic_target(states)
 
-                # Optimize the critic
-                critic_loss = F.mse_loss(critic_outputs, rewards)
+                # Compute the advantages
+                advantages = predicted_rewards - critic_targets.detach()
 
-                # Optimize the actor
-                actor_loss = -torch.mean(critic_outputs.detach() * actor_outputs)
+                # Update the actor network
+                optimizer_actor.zero_grad()
+                actor_output, _ = self.forward(states)
+                actor_loss = -torch.mean(actor_output * advantages.unsqueeze(-1))
+                actor_loss.backward(retain_graph=True)
+                optimizer_actor.step()
+                actor_losses.append(actor_loss.item())
 
-                # print critic_loss and actor_loss
-                print("Critic loss: {}".format(critic_loss.item()))
-                print("Actor loss: {}".format(actor_loss.item()))
+                # Update the critic network
+                optimizer_critic.zero_grad()
+                _, critic_output = self.forward(states)
+                critic_loss = criterion(critic_output.squeeze(-1), predicted_rewards)
+                critic_loss.backward(retain_graph=True)
+                optimizer_critic.step()
+                critic_losses.append(critic_loss.item())
 
-                # Update the total loss
-                total_loss += actor_loss + critic_loss
+            # Update the target networks using a soft update
+            self.soft_update_target_networks(self.actor, self.actor_target, tau=0.01)
+            self.soft_update_target_networks(self.critic, self.critic_target, tau=0.01)
 
-            # Update the parameters of the policy
-            total_loss.backward()
-            optimizer.step()
+            # Print epoch statistics
+            avg_actor_loss = np.mean(actor_losses)
+            avg_critic_loss = np.mean(critic_losses)
+            print(f"Epoch {epoch + 1}/{epochs} | Actor Loss: {avg_actor_loss:.4f} | Critic Loss: {avg_critic_loss:.4f}")
 
-            print("Total loss: {}".format(total_loss.item()))
-
-        # Update the parameters of the actor target network
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # Update the parameters of the critic target network
-        self.critic_target.load_state_dict(self.critic.state_dict())
-
-        return total_loss.item()

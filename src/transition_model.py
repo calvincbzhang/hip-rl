@@ -116,11 +116,31 @@ class GPTransitionModel(nn.Module):
         train_y = next_state.t().contiguous()
         return train_x, train_y
     
-    def generate_batch(self, batch_size):
-        indices = np.random.choice(len(self.state), size=batch_size, replace=False)
-        batch_state = torch.stack([self.state[i] for i in indices])
-        batch_action = torch.stack([self.action[i] for i in indices])
-        batch_next_state = torch.stack([self.next_state[i] for i in indices])
-        return batch_state, batch_action, batch_next_state
+
+    # get a random initial state
+    def sample_initial_state(self):
+        return torch.rand(self.state_dim)
+    
+
+    # sample a next state given a state and action
+    def sample_next_state(self, state, action):
+        self.gp.eval()
+        self.likelihood.eval()
+        with torch.no_grad():
+            input = self.state_actions_to_train_data(state, action)
+            out = [
+                likelihood(gp(input))
+                for gp, likelihood in zip(self.gp, self.likelihood)
+            ]
+            mean = torch.stack(tuple(o.mean for o in out), dim=-1)
+            stddev = torch.stack(
+                tuple(
+                    torch.sqrt(o.variance.clamp(l.noise.item() ** 2, float("inf")))
+                    for o, l in zip(out, self.likelihood)
+                ),
+                dim=-1,
+            )
+        return torch.normal(mean, stddev).squeeze(0)
+
 
     # TODO: calibrate model

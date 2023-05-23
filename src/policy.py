@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class Policy(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=64):
+    def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(Policy, self).__init__()
 
         self.state_dim = state_dim
@@ -12,22 +12,48 @@ class Policy(nn.Module):
         self.hidden_dim = hidden_dim
 
         # Define the actor network
-        self.actor_fc1 = nn.Linear(state_dim, hidden_dim)
-        self.actor_fc2 = nn.Linear(hidden_dim, action_dim)
+        self.actor = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim)
+        )
+
+        # Define the actor target network
+        self.actor_target = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim)
+        )
+
+        # Actor optimizer
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
 
         # Define the critic network
-        self.critic_fc1 = nn.Linear(state_dim, hidden_dim)
-        self.critic_fc2 = nn.Linear(hidden_dim, 1)
+        self.critic = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        # Define the critic target network
+        self.critic_target = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 1)
+        )
+
+        # Critic optimizer
+        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
+
+        # Copy the parameters of the actor network to the actor target network
+        self.actor_target.load_state_dict(self.actor.state_dict())
+
+        # Copy the parameters of the critic network to the critic target network
+        self.critic_target.load_state_dict(self.critic.state_dict())
 
     def forward(self, state):
-        # Compute actor output (mean of action distribution)
-        actor_x = F.relu(self.actor_fc1(state))
-        actor_output = torch.tanh(self.actor_fc2(actor_x))
-
-        # Compute critic output (state-value)
-        critic_x = F.relu(self.critic_fc1(state))
-        critic_output = self.critic_fc2(critic_x)
-
+        actor_output = self.actor(state)
+        critic_output = self.critic(state)
         return actor_output, critic_output
 
     def sample_action(self, state):
@@ -35,38 +61,74 @@ class Policy(nn.Module):
         actor_output, _ = self.forward(state)
         action = actor_output.squeeze().detach().numpy()
         return action
+    
+    def simulate_model(self, transition_model, n_trajectories=10, max_steps=100):
+        trajectories = []
 
-    def train_policy(self, transition_model, reward_model, epochs=10, batch_size=1, learning_rate=1e-3):
+        for _ in range(n_trajectories):
+            states = []
+            actions = []
+
+            # get initial state
+            state = torch.tensor(transition_model.sample_initial_state(), dtype=torch.float32)
+            states.append(state)
+
+            for _ in range(max_steps):
+                action = torch.tensor(self.sample_action(state), dtype=torch.float32)
+                actions.append(action)
+
+                next_state = torch.tensor(transition_model.sample_next_state(state, action), dtype=torch.float32)
+                states.append(next_state)
+
+                state = next_state
+
+            trajectories.append((states, actions))
+
+        return trajectories
+
+    def train_policy(self, transition_model, reward_model, epochs=5, batch_size=8, learning_rate=1e-3, gamma=0.99):
         optimizer = optim.Adam(self.parameters(), lr=learning_rate)
+        # Simulate trajectories using the transition model and the current policy
+        trajectories = self.simulate_model(transition_model, n_trajectories=batch_size)
 
         for _ in range(epochs):
             optimizer.zero_grad()
 
-            # Generate a batch of transitions using the transition model
-            states, actions, next_states = transition_model.generate_batch(batch_size)
+            # Compute the loss
+            total_loss = 0.0
+            for states, actions in trajectories:
+                states = torch.stack(states[:-1])
+                actions = torch.stack(actions)
 
-            # Compute the predicted rewards using the reward model
-            rewards = reward_model.predict(states, actions)
+                # Compute the reward
+                rewards = reward_model.predict(states, actions)
 
-            # Compute actor and critic outputs
-            actor_outputs, critic_outputs = self.forward(states)
+                # Compute actor and critic outputs
+                actor_outputs, critic_outputs = self.forward(states)
 
-            # Compute log probabilities of the selected actions
-            dist = torch.distributions.Normal(actor_outputs, torch.ones_like(actor_outputs))
-            log_probs = dist.log_prob(actions).sum(dim=1)
+                # Optimize the critic
+                critic_loss = F.mse_loss(critic_outputs, rewards)
 
-            # Compute advantage estimates
-            advantages = rewards - critic_outputs.squeeze()
+                # Optimize the actor
+                actor_loss = -torch.mean(critic_outputs.detach() * actor_outputs)
 
-            # Compute actor loss
-            actor_loss = -(log_probs * advantages.detach()).mean()
+                # print critic_loss and actor_loss
+                print("Critic loss: {}".format(critic_loss.item()))
+                print("Actor loss: {}".format(actor_loss.item()))
 
-            # Compute critic loss (mean squared error)
-            critic_loss = F.mse_loss(critic_outputs.squeeze(), rewards)
+                # Update the total loss
+                total_loss += actor_loss + critic_loss
 
-            # Compute total loss
-            total_loss = actor_loss + critic_loss
-
-            # Backpropagation
+            # Update the parameters of the policy
             total_loss.backward()
             optimizer.step()
+
+            print("Total loss: {}".format(total_loss.item()))
+
+        # Update the parameters of the actor target network
+        self.actor_target.load_state_dict(self.actor.state_dict())
+
+        # Update the parameters of the critic target network
+        self.critic_target.load_state_dict(self.critic.state_dict())
+
+        return total_loss.item()

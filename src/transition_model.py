@@ -85,8 +85,8 @@ class GPTransitionModel(nn.Module):
         x, y = self.state_actions_to_train_data(state, action, next_state)
 
         for i, y_i in enumerate(y):
-            inputs = torch.cat((self.gp[i].train_inputs[0], x), dim=0)
-            outputs = torch.cat((self.gp[i].train_targets, torch.tensor([y_i])), dim=-1)
+            inputs = torch.cat((self.gp[i].train_inputs[0], x), dim=0).to(self.state.device)
+            outputs = torch.cat((self.gp[i].train_targets, torch.tensor([y_i])), dim=-1).to(self.state.device)
             self.gp[i].set_train_data(inputs, outputs, strict=False)
 
 

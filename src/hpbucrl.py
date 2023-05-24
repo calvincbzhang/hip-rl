@@ -82,6 +82,7 @@ class HPbUCRL:
 
             # log data
             logging.info(f'Episode {k} - Reward: {reward} - Old Reward: {reward_old}')
+            logging.info(f'Episode {k} - Rewards: {self.R}')
 
             # TODO: add stochasticity to the preference
             # compute binary preference between new and old trajectory

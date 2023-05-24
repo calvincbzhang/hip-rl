@@ -6,11 +6,19 @@ import numpy as np
 
 from hpbucrl import HPbUCRL
 
+import logging
+import datetime
+
 # ignore warnings
 import warnings
 warnings.filterwarnings("ignore")
 
 if __name__ == "__main__":
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = f"log_file_{timestamp}.log"
+
+    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # parse arguments
     parser = argparse.ArgumentParser()

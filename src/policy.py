@@ -5,6 +5,8 @@ import torch.optim as optim
 
 import numpy as np
 
+import logging
+
 class Policy(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(Policy, self).__init__()
@@ -144,4 +146,4 @@ class Policy(nn.Module):
             avg_actor_loss = np.mean(actor_losses)
             avg_critic_loss = np.mean(critic_losses)
             print(f"Epoch {epoch + 1}/{epochs} | Actor Loss: {avg_actor_loss:.4f} | Critic Loss: {avg_critic_loss:.4f}")
-
+            logging.info(f"Epoch {epoch + 1}/{epochs} | Actor Loss: {avg_actor_loss:.4f} | Critic Loss: {avg_critic_loss:.4f}")

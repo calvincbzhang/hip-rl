@@ -3,6 +3,8 @@ import torch
 from torch import nn
 import numpy as np
 
+import logging
+
 
 class ExactGPModel(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood, mean=None, kernel=None):
@@ -103,8 +105,9 @@ class GPTransitionModel(nn.Module):
             loss.backward()
             optimizer.step()
 
-            if verbose and (epoch + 1) % 10 == 0:
+            if verbose and (epoch + 1) % 100 == 0:
                 print(f"Epoch {epoch + 1}/{epochs} \t Loss: {loss.item():.4f}")
+                logging.info(f"Epoch {epoch + 1}/{epochs} \t Loss: {loss.item():.4f}")
 
 
     def state_actions_to_train_data(self, state, action, next_state=None):

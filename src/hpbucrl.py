@@ -5,6 +5,8 @@ from transition_model import GPTransitionModel
 from reward_model import RewardModel
 from policy import Policy
 
+import logging
+
 
 class HPbUCRL:
     def __init__(self, env, config):
@@ -78,7 +80,8 @@ class HPbUCRL:
             self.T.append(tau)
             self.R.append(reward)
 
-            print(self.R)
+            # log data
+            logging.info(f'Episode {k} - Reward: {reward} - Old Reward: {reward_old}')
 
             # TODO: add stochasticity to the preference
             # compute binary preference between new and old trajectory
@@ -90,7 +93,7 @@ class HPbUCRL:
             # estimate reward
             self.reward_model.train(self.P)
             # estimate transition model
-            self.transition_model.train()
+            self.transition_model.train(verbose=True)
             # train policy
             self.policy.train_policy(self.transition_model, self.reward_model)
         

@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import logging
+
 
 class RewardModel(nn.Module):
     def __init__(self, state_dim, action_dim):
@@ -59,6 +61,7 @@ class RewardModel(nn.Module):
             loss = self.train_step(preferences_data, device=device)
             if epoch == 99:
                 print(f"Epoch {epoch + 1} | Loss {loss:.4f}")
+                logging.info(f"Epoch {epoch + 1} | Loss {loss:.4f}")
 
     def predict(self, states, actions):
         inputs = torch.cat((states, actions), dim=-1)

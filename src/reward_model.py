@@ -22,18 +22,21 @@ class RewardModel(nn.Module):
         # Define the optimizer
         self.optimizer = optim.Adam(self.parameters(), lr=1e-3)
 
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
     def forward(self, state, action):
         x = torch.cat((state, action), dim=-1)
         reward = self.reward_fn(x)
         return reward.squeeze(-1)
 
-    def compute_loss(self, preferences_data, device='cpu'):
+    def compute_loss(self, preferences_data):
         loss = 0.0
         n_pairs = 0
 
         for tau1, tau2, true_pref in preferences_data:
-            states1, actions1 = torch.tensor(tau1[::2][:-1], dtype=torch.float32, device=device), torch.tensor(tau1[1::2], dtype=torch.float32, device=device)
-            states2, actions2 = torch.tensor(tau2[::2][:-1], dtype=torch.float32, device=device), torch.tensor(tau2[1::2], dtype=torch.float32, device=device)
+            states1, actions1 = torch.tensor(tau1[::2][:-1], dtype=torch.float32, device=self.device), torch.tensor(tau1[1::2], dtype=torch.float32, device=self.device)
+            states2, actions2 = torch.tensor(tau2[::2][:-1], dtype=torch.float32, device=self.device), torch.tensor(tau2[1::2], dtype=torch.float32, device=self.device)
 
             r_tau1 = self.forward(states1, actions1)
             r_tau2 = self.forward(states2, actions2)
@@ -45,9 +48,9 @@ class RewardModel(nn.Module):
         loss = -loss / n_pairs
         return loss
     
-    def train_step(self, preferences_data, device='cpu'):
+    def train_step(self, preferences_data):
         # Compute the loss
-        loss = self.compute_loss(preferences_data, device=device)
+        loss = self.compute_loss(preferences_data)
 
         # Update the model parameters
         self.optimizer.zero_grad()
@@ -56,9 +59,9 @@ class RewardModel(nn.Module):
 
         return loss.item()
     
-    def train(self, preferences_data, epochs=100, device='cpu'):
+    def train(self, preferences_data, epochs=100):
         for epoch in range(epochs):
-            loss = self.train_step(preferences_data, device=device)
+            loss = self.train_step(preferences_data)
             if epoch == 99:
                 print(f"Epoch {epoch + 1} | Loss {loss:.4f}")
                 logging.info(f"Epoch {epoch + 1} | Loss {loss:.4f}")

@@ -29,11 +29,16 @@ if __name__ == "__main__":
     with open('configs/' + args.config) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
+    # check if GPU is available and use it if possible
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using device: {device}")
+    logging.info(f"Using device: {device}")
+
     # define environment
     env = gym.make(config['env_name'])
 
     # initialize agent
-    agent = HPbUCRL(env, config)
+    agent = HPbUCRL(env, config, device=device)
 
     # train agent
     agent.train()

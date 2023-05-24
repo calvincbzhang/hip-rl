@@ -55,15 +55,18 @@ class Policy(nn.Module):
         # Copy the parameters of the critic network to the critic target network
         self.critic_target.load_state_dict(self.critic.state_dict())
 
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.to(self.device)
+
     def forward(self, state):
         actor_output = self.actor(state)
         critic_output = self.critic(state)
         return actor_output, critic_output
 
     def sample_action(self, state):
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+        state = torch.tensor(state, dtype=torch.float32).to(self.device)
         actor_output, _ = self.forward(state)
-        action = actor_output.squeeze().detach().numpy()
+        action = actor_output.squeeze().detach().cpu().numpy()
         return action
     
     def simulate_model(self, transition_model, n_trajectories=10, max_steps=100):
@@ -74,14 +77,14 @@ class Policy(nn.Module):
             actions = []
 
             # get initial state
-            state = torch.tensor(transition_model.sample_initial_state(), dtype=torch.float32)
+            state = torch.tensor(transition_model.sample_initial_state(), dtype=torch.float32).to(self.device)
             states.append(state)
 
             for _ in range(max_steps):
-                action = torch.tensor(self.sample_action(state), dtype=torch.float32)
+                action = torch.tensor(self.sample_action(state), dtype=torch.float32).to(self.device)
                 actions.append(action)
 
-                next_state = torch.tensor(transition_model.sample_next_state(state, action), dtype=torch.float32)
+                next_state = torch.tensor(transition_model.sample_next_state(state, action), dtype=torch.float32).to(self.device)
                 states.append(next_state)
 
                 state = next_state
@@ -110,8 +113,8 @@ class Policy(nn.Module):
             critic_losses = []
 
             for states, actions in trajectories:
-                states = torch.stack(states[:-1])
-                actions = torch.stack(actions)
+                states = torch.stack(states[:-1]).to(self.device)
+                actions = torch.stack(actions).to(self.device)
 
                 # Compute the predicted rewards using the reward model
                 predicted_rewards = reward_model.predict(states, actions)

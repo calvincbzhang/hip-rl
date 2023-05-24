@@ -15,7 +15,7 @@ class ExactGPModel(gpytorch.models.ExactGP):
 
         if kernel is None:
             kernel = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-        self.covar_module = kernel
+        self.covar_module = kernel.to(train_x.device)
 
 
     def forward(self, x):
@@ -25,11 +25,11 @@ class ExactGPModel(gpytorch.models.ExactGP):
 
 
 class GPTransitionModel(nn.Module):
-    def __init__(self, state, action, next_state, mean=None, kernel=None):
+    def __init__(self, state, action, next_state, mean=None, kernel=None, device='cpu'):
         super().__init__()
-        self.state = state
-        self.action = action
-        self.next_state = next_state
+        self.state = state.to(device)
+        self.action = action.to(device)
+        self.next_state = next_state.to(device)
         self.mean = mean
         self.kernel = kernel
 
@@ -41,13 +41,13 @@ class GPTransitionModel(nn.Module):
         likelihoods = []
         gps = []
         for train_y_i in train_y:
-            likelihood = gpytorch.likelihoods.GaussianLikelihood()
-            gp = ExactGPModel(train_x, train_y_i, likelihood, mean, kernel)
+            likelihood = gpytorch.likelihoods.GaussianLikelihood().to(device)
+            gp = ExactGPModel(train_x, train_y_i, likelihood, mean, kernel).to(device)
             gps.append(gp)
             likelihoods.append(likelihood)
 
         self.likelihood = torch.nn.ModuleList(likelihoods)
-        self.gp = torch.nn.ModuleList(gps)
+        self.gp = torch.nn.ModuleList(gps).to(device)
 
 
     def forward(self, state, action):
@@ -111,18 +111,18 @@ class GPTransitionModel(nn.Module):
 
 
     def state_actions_to_train_data(self, state, action, next_state=None):
-        train_x = torch.cat((state, action), dim=-1)
+        train_x = torch.cat((state, action), dim=-1).to(state.device)
         if train_x.dim() < 2:
             train_x = train_x.unsqueeze(0)
         if next_state is None:
             return train_x
-        train_y = next_state.t().contiguous()
+        train_y = next_state.t().contiguous().to(state.device)
         return train_x, train_y
     
 
     # get a random initial state
     def sample_initial_state(self):
-        return torch.rand(self.state_dim)
+        return torch.rand(self.state_dim).to(self.state.device)
     
 
     # sample a next state given a state and action
@@ -146,4 +146,6 @@ class GPTransitionModel(nn.Module):
         return torch.normal(mean, stddev).squeeze(0)
 
 
-    # TODO: calibrate model
+    def calibrate_model(self):
+        # Add calibration code here
+        pass

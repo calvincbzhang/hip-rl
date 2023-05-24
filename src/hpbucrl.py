@@ -9,22 +9,24 @@ import logging
 
 
 class HPbUCRL:
-    def __init__(self, env, config):
+    def __init__(self, env, config, device='cpu'):
 
         self.env = env
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
 
+        self.device = device
+
         # TODO: initialize parameters
         self.horizon = config['horizon']
         self.train_epochs = config['train_epochs']
 
-        state = torch.zeros(1, self.state_dim)
-        action = torch.zeros(1, self.action_dim)
-        next_state = torch.zeros(1, self.state_dim)
+        state = torch.zeros(1, self.state_dim, device=device)
+        action = torch.zeros(1, self.action_dim, device=device)
+        next_state = torch.zeros(1, self.state_dim, device=device)
 
         # initialize transition model
-        self.transition_model = GPTransitionModel(state, action, next_state)
+        self.transition_model = GPTransitionModel(state, action, next_state, device=device)
         # initialize reward model
         self.reward_model = RewardModel(self.state_dim, self.action_dim)
         # initialize policy
@@ -44,7 +46,9 @@ class HPbUCRL:
             s_next, r, _, _, _ = self.env.step(a)
 
             # add data to the transition model
-            self.transition_model.add_data(torch.tensor(s), torch.tensor(a), torch.tensor(s_next))
+            self.transition_model.add_data(torch.tensor(s, device=self.device),
+                                           torch.tensor(a, device=self.device),
+                                           torch.tensor(s_next, device=self.device))
 
             s = s_next
             reward += r
@@ -65,7 +69,9 @@ class HPbUCRL:
                 s_next, r, _, _, _ = self.env.step(a)
 
                 # add data to the transition model
-                self.transition_model.add_data(torch.tensor(s), torch.tensor(a), torch.tensor(s_next))
+                self.transition_model.add_data(torch.tensor(s, device=self.device),
+                                               torch.tensor(a, device=self.device),
+                                               torch.tensor(s_next, device=self.device))
 
                 s = s_next
                 reward += r
@@ -81,6 +87,8 @@ class HPbUCRL:
             self.R.append(reward)
 
             # log data
+            print(f'Episode {k} - Reward: {reward} - Old Reward: {reward_old}')
+            print(f'Episode {k} - Rewards: {self.R}')
             logging.info(f'Episode {k} - Reward: {reward} - Old Reward: {reward_old}')
             logging.info(f'Episode {k} - Rewards: {self.R}')
 

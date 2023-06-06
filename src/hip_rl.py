@@ -12,8 +12,8 @@ class HIPRL:
     def __init__(self, env, config):
 
         self.env = env
-        self.state_dim = env.observation_space.shape[0].to(device)
-        self.action_dim = env.action_space.shape[0].to(device)
+        self.state_dim = env.observation_space.shape[0]
+        self.action_dim = env.action_space.shape[0]
 
         self.episodes = config['episodes']
         self.steps = config['steps']

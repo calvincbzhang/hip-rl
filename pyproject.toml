@@ -1,19 +1,18 @@
 [tool.poetry]
-name = "gaussian-process-preference-based-rl"
+name = "hip-rl"
 version = "0.1.0"
 description = ""
-authors = ["Chen Bo Calvin Zhang"]
+authors = ["Chen Bo Calvin Zhang <chenbocalvinzhang@gmail.com>"]
 readme = "README.md"
-packages = [{include = "gaussian_process_preference_based_rl"}]
-license = "MIT"
+packages = [{include = "hip_rl"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-mujoco = "^2.3.2"
 gym = "^0.26.2"
-imageio = "^2.26.0"
-gpytorch = "^1.9.1"
+torch = "^2.0.1"
 pyyaml = "^6.0"
+numpy = "^1.24.3"
+blitz-bayesian-pytorch = "^0.2.8"
 
 
 [build-system]

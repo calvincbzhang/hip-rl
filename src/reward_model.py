@@ -1,72 +1,58 @@
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
+import torch.nn.functional as F
 
+from blitz.modules import BayesianLinear
 import logging
 
+class BNNRewardModel(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim=32):
+        super(BNNRewardModel, self).__init__()
 
-class RewardModel(nn.Module):
-    def __init__(self, state_dim, action_dim):
-        super(RewardModel, self).__init__()
         self.state_dim = state_dim
         self.action_dim = action_dim
+        self.hidden_dim = hidden_dim
 
-        # Define the reward function parameterized by a neural network
-        self.reward_fn = nn.Sequential(
-            nn.Linear(state_dim + action_dim, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-        )
-
-        # Define the optimizer
-        self.optimizer = optim.Adam(self.parameters(), lr=1e-3)
-
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.to(self.device)
+        self.linear1 = BayesianLinear(state_dim + action_dim, hidden_dim)
+        self.linear2 = BayesianLinear(hidden_dim, hidden_dim)
+        self.linear3 = BayesianLinear(hidden_dim, 1)
 
     def forward(self, state, action):
+        state = torch.tensor(state, dtype=torch.float32)
+        action = torch.tensor(action, dtype=torch.float32)
         x = torch.cat((state, action), dim=-1)
-        reward = self.reward_fn(x)
-        return reward.squeeze(-1)
-
-    def compute_loss(self, preferences_data):
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
+        return F.tanh(self.linear3(x))
+    
+    def compute_loss(self, P):
         loss = 0.0
         n_pairs = 0
 
-        for tau1, tau2, true_pref in preferences_data:
-            states1, actions1 = torch.tensor(tau1[::2][:-1], dtype=torch.float32, device=self.device), torch.tensor(tau1[1::2], dtype=torch.float32, device=self.device)
-            states2, actions2 = torch.tensor(tau2[::2][:-1], dtype=torch.float32, device=self.device), torch.tensor(tau2[1::2], dtype=torch.float32, device=self.device)
+        for tau1, tau2, preference in P:
+            states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32), torch.tensor(tau1[1::2], dtype=torch.float32)
+            states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32), torch.tensor(tau2[1::2], dtype=torch.float32)
 
             r_tau1 = self.forward(states1, actions1)
             r_tau2 = self.forward(states2, actions2)
 
-            pref = torch.exp(r_tau1).sum() / (torch.exp(r_tau1).sum() + torch.exp(r_tau2).sum())
-            loss += true_pref * torch.log(pref) + (1 - true_pref) * torch.log(1 - pref)
+            pref = r_tau1 - r_tau2
+            loss += torch.sum(torch.abs(pref - preference))
             n_pairs += 1
 
-        loss = -loss / n_pairs
+        loss = loss / n_pairs
         return loss
     
-    def train_step(self, preferences_data):
-        # Compute the loss
-        loss = self.compute_loss(preferences_data)
+    def train_model(self, P, epochs=10, lr=0.01):
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        for epoch in range(epochs * len(P)):
 
-        # Update the model parameters
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+            loss = self.compute_loss(P)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-        return loss.item()
-    
-    def train(self, preferences_data, epochs=100):
-        for epoch in range(epochs):
-            loss = self.train_step(preferences_data)
-            if epoch == 99:
-                print(f"Epoch {epoch + 1} | Loss {loss:.4f}")
-                logging.info(f"Epoch {epoch + 1} | Loss {loss:.4f}")
-
-    def predict(self, states, actions):
-        inputs = torch.cat((states, actions), dim=-1)
-        rewards = self.reward_fn(inputs)
-        return rewards.squeeze()
+            if (epoch+1) % 100 == 0:
+                print(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
+                logging.info(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")

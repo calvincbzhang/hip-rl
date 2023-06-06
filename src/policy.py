@@ -4,8 +4,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 import numpy as np
-
 import logging
+
+eps = np.finfo(np.float32).eps.item()
 
 class Policy(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
@@ -15,138 +16,73 @@ class Policy(nn.Module):
         self.action_dim = action_dim
         self.hidden_dim = hidden_dim
 
-        # Define the actor network
-        self.actor = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
-        )
-
-        # Define the actor target network
-        self.actor_target = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
-        )
-
-        # Actor optimizer
-        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=1e-3)
-
-        # Define the critic network
-        self.critic = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
-        )
-
-        # Define the critic target network
-        self.critic_target = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1)
-        )
-
-        # Critic optimizer
-        self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=1e-3)
-
-        # Copy the parameters of the actor network to the actor target network
-        self.actor_target.load_state_dict(self.actor.state_dict())
-
-        # Copy the parameters of the critic network to the critic target network
-        self.critic_target.load_state_dict(self.critic.state_dict())
-
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.to(self.device)
+        self.fc1 = nn.Linear(state_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_output = nn.Linear(hidden_dim, action_dim)
+        self.var_output = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, state):
-        actor_output = self.actor(state)
-        critic_output = self.critic(state)
-        return actor_output, critic_output
-
-    def sample_action(self, state):
-        state = torch.tensor(state, dtype=torch.float32).to(self.device)
-        actor_output, _ = self.forward(state)
-        action = actor_output.squeeze().detach().cpu().numpy()
-        return action
+        x = torch.relu(self.fc1(state))
+        x = torch.relu(self.fc2(x))
+        
+        mean = self.mean_output(x)
+        var = torch.exp(self.var_output(x))  # Ensure variance is positive
+        
+        return mean, var
     
-    def simulate_model(self, transition_model, n_trajectories=10, max_steps=100):
-        trajectories = []
-
-        for _ in range(n_trajectories):
-            states = []
-            actions = []
-
-            # get initial state
-            state = torch.tensor(transition_model.sample_initial_state(), dtype=torch.float32).to(self.device)
-            states.append(state)
-
-            for _ in range(max_steps):
-                action = torch.tensor(self.sample_action(state), dtype=torch.float32).to(self.device)
-                actions.append(action)
-
-                next_state = torch.tensor(transition_model.sample_next_state(state, action), dtype=torch.float32).to(self.device)
-                states.append(next_state)
-
-                state = next_state
-
-            trajectories.append((states, actions))
-
-        return trajectories
-    
-    def soft_update_target_networks(self, network, target_network, tau=0.01):
-        for network_param, target_network_param in zip(network.parameters(), target_network.parameters()):
-            target_network_param.data.copy_(tau * network_param.data + (1.0 - tau) * target_network_param.data)
-
-    def train_policy(self, transition_model, reward_model, epochs=5, batch_size=4, learning_rate=1e-3, gamma=0.99):
-        criterion = nn.MSELoss()
-        optimizer_actor = optim.Adam(self.actor.parameters(), lr=learning_rate)
-        optimizer_critic = optim.Adam(self.critic.parameters(), lr=learning_rate)
+    def train_policy(self, initial_state, transition_model, reward_model, epochs=1000, steps=100, lr=0.001, gamma=0.99):
+        optimizer = optim.Adam(self.parameters(), lr=lr)
 
         for epoch in range(epochs):
-            # Sample trajectories using the transition model
-            trajectories = self.simulate_model(transition_model, n_trajectories=batch_size)
+            state = initial_state
+            rewards = []
+            log_probs = []
 
-            optimizer_actor.zero_grad()
-            optimizer_critic.zero_grad()
+            for step in range(steps):
+                # Forward pass through the policy network
+                state = torch.tensor(state, dtype=torch.float32)
+                mean, var = self.forward(state)
+                dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(var))
 
-            actor_losses = []
-            critic_losses = []
+                # Sample an action from the distribution
+                action = dist.sample()
 
-            for states, actions in trajectories:
-                states = torch.stack(states[:-1]).to(self.device)
-                actions = torch.stack(actions).to(self.device)
+                # Compute log probability of the action
+                log_prob = dist.log_prob(action)
 
-                # Compute the predicted rewards using the reward model
-                predicted_rewards = reward_model.predict(states, actions)
+                # Perform the action and observe the next state and reward
+                next_state = transition_model(state, action)
+                reward = reward_model(state, action)
 
-                # Compute the state-value targets using the critic target network
-                critic_targets = self.critic_target(states)
+                rewards.append(reward)
+                log_probs.append(log_prob)
 
-                # Compute the advantages
-                advantages = predicted_rewards - critic_targets.detach()
+                state = next_state
+            
+            # Compute the discounted rewards
+            R = 0
+            policy_loss = []
+            rtg = []
 
-                # Update the actor network
-                optimizer_actor.zero_grad()
-                actor_output, _ = self.forward(states)
-                actor_loss = -torch.mean(actor_output * advantages.unsqueeze(-1))
-                actor_loss.backward(retain_graph=True)
-                optimizer_actor.step()
-                actor_losses.append(actor_loss.item())
+            for r in rewards[::-1]:
+                R = r + gamma * R
+                rtg.insert(0, R)
 
-                # Update the critic network
-                optimizer_critic.zero_grad()
-                _, critic_output = self.forward(states)
-                critic_loss = criterion(critic_output.squeeze(-1), predicted_rewards)
-                critic_loss.backward(retain_graph=True)
-                optimizer_critic.step()
-                critic_losses.append(critic_loss.item())
+            # Normalize the rewards
+            rtg = torch.tensor(rtg)
+            rtg = (rtg - rtg.mean()) / (rtg.std() + eps)
 
-            # Update the target networks using a soft update
-            self.soft_update_target_networks(self.actor, self.actor_target, tau=0.01)
-            self.soft_update_target_networks(self.critic, self.critic_target, tau=0.01)
+            # Compute the policy loss
+            for log_prob, reward in zip(log_probs, rtg):
+                policy_loss.append(-log_prob * reward)
+            
+            policy_loss = torch.stack(policy_loss).sum(dim=0).requires_grad_(True)
 
-            # Print epoch statistics
-            avg_actor_loss = np.mean(actor_losses)
-            avg_critic_loss = np.mean(critic_losses)
-            print(f"Epoch {epoch + 1}/{epochs} | Actor Loss: {avg_actor_loss:.4f} | Critic Loss: {avg_critic_loss:.4f}")
-            logging.info(f"Epoch {epoch + 1}/{epochs} | Actor Loss: {avg_actor_loss:.4f} | Critic Loss: {avg_critic_loss:.4f}")
+            # Update the policy network
+            optimizer.zero_grad()
+            policy_loss.backward()
+            optimizer.step()
+
+            if epoch % 100 == 0:
+                print(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")
+                logging.info(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")

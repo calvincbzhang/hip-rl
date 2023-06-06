@@ -1,0 +1,4 @@
+env_name: Reacher-v4
+
+episodes: 1000
+steps: 1000

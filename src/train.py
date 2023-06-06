@@ -4,7 +4,7 @@ import argparse
 import yaml
 import numpy as np
 
-from hpbucrl import HPbUCRL
+from hip_rl import HIPRL
 
 import logging
 import datetime
@@ -13,32 +13,46 @@ import datetime
 import warnings
 warnings.filterwarnings("ignore")
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+class ClipReward(gym.RewardWrapper):
+    def __init__(self, env, min_reward, max_reward):
+        super().__init__(env)
+        self.min_reward = min_reward
+        self.max_reward = max_reward
+        self.reward_range = (min_reward, max_reward)
+    
+    def reward(self, reward):
+        return np.clip(reward, self.min_reward, self.max_reward)
+
+
 if __name__ == "__main__":
-
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = f"log_file_{timestamp}.log"
-
-    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # parse arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default='config-swimmer.yaml', help='config file')
+    parser.add_argument('--config', type=str, default='swimmer.yaml', help='config file')
     args = parser.parse_args()
 
     # load config file
     with open('configs/' + args.config) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    # check if GPU is available and use it if possible
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
-    logging.info(f"Using device: {device}")
+    # TODO: add wandb support
 
-    # define environment
+    # set up logging
+    timestap = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    filename = "logs/" + config['env_name'] + "_" + timestamp + ".txt"
+
+    logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+    # set up environment
     env = gym.make(config['env_name'])
+    env = ClipReward(env, -1, 1)
 
     # initialize agent
-    agent = HPbUCRL(env, config, device=device)
+    agent = HIPRL(env, config)
 
     # train agent
     agent.train()

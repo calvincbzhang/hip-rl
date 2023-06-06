@@ -1,1 +1,1 @@
-# gaussian-process-preference-based-rl
+# hip-rl

@@ -1,3 +1,0 @@
-env_name: Swimmer-v4
-train_epochs: 25
-horizon: 100

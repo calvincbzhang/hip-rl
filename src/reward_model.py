@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from blitz.modules import BayesianLinear
 import logging
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class BNNRewardModel(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(BNNRewardModel, self).__init__()
@@ -31,8 +33,8 @@ class BNNRewardModel(nn.Module):
         n_pairs = 0
 
         for tau1, tau2, preference in P:
-            states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32), torch.tensor(tau1[1::2], dtype=torch.float32)
-            states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32), torch.tensor(tau2[1::2], dtype=torch.float32)
+            states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32).to(device), torch.tensor(tau1[1::2], dtype=torch.float32).to(device)
+            states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32).to(device), torch.tensor(tau2[1::2], dtype=torch.float32).to(device)
 
             r_tau1 = self.forward(states1, actions1)
             r_tau2 = self.forward(states2, actions2)

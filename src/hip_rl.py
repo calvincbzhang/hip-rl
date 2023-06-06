@@ -12,15 +12,15 @@ class HIPRL:
     def __init__(self, env, config):
 
         self.env = env
-        self.state_dim = env.observation_space.shape[0]
-        self.action_dim = env.action_space.shape[0]
+        self.state_dim = env.observation_space.shape[0].to(device)
+        self.action_dim = env.action_space.shape[0].to(device)
 
         self.episodes = config['episodes']
         self.steps = config['steps']
 
-        self.policy = Policy(self.state_dim, self.action_dim)
-        self.reward_model = BNNRewardModel(self.state_dim, self.action_dim)
-        self.transition_model = BNNTransitionModel(self.state_dim, self.action_dim)
+        self.policy = Policy(self.state_dim, self.action_dim).to(device)
+        self.reward_model = BNNRewardModel(self.state_dim, self.action_dim).to(device)
+        self.transition_model = BNNTransitionModel(self.state_dim, self.action_dim).to(device)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -42,7 +42,7 @@ class HIPRL:
             print(f"======== Episode {episode+1}/{self.episodes} ========")
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
              
-            if episode >= 10:
+            if episode >= 1:
                 #  train policy
                 self.train_policy()
 
@@ -67,7 +67,7 @@ class HIPRL:
             # train models
             self.train_models()
 
-            if episode >= 10:
+            if episode >= 1:
                 # test policy so far
                 self.test_policy()
 
@@ -87,7 +87,7 @@ class HIPRL:
         for step in range(self.steps):
 
             # get action from policy
-            mean, var = self.policy(torch.FloatTensor(state))
+            mean, var = self.policy(torch.FloatTensor(state).to(device))
 
             # Sample action from normal distribution
             action = torch.normal(mean, var).detach().numpy()

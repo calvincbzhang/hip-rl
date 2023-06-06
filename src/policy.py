@@ -7,6 +7,7 @@ import numpy as np
 import logging
 
 eps = np.finfo(np.float32).eps.item()
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class Policy(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):

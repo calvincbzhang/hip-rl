@@ -6,6 +6,8 @@ import torch.nn.functional as F
 from blitz.modules import BayesianLinear
 import logging
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class BNNTransitionModel(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_dim=32):
         super(BNNTransitionModel, self).__init__()
@@ -36,7 +38,7 @@ class BNNTransitionModel(nn.Module):
             trajectory_loss = 0.0
 
             for tau in T:
-                states, actions = torch.tensor(tau[::2], dtype=torch.float32), torch.tensor(tau[1::2], dtype=torch.float32)
+                states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device).to(device)
                 next_states = self.forward(states, actions)
                 loss = torch.sum((next_states - states)**2)
                 trajectory_loss += loss.item()

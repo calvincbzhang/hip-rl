@@ -20,7 +20,8 @@ class BNNTransitionModel(nn.Module):
 
         self.linear1 = BayesianLinear(state_dim + action_dim, hidden_dim)
         self.linear2 = BayesianLinear(hidden_dim, hidden_dim)
-        self.linear3 = BayesianLinear(hidden_dim, state_dim)
+        self.mean_output = BayesianLinear(hidden_dim, state_dim)
+        self.stddev_output = BayesianLinear(hidden_dim, state_dim)
 
     def forward(self, state, action):
         state = torch.tensor(state, dtype=torch.float32)
@@ -28,11 +29,16 @@ class BNNTransitionModel(nn.Module):
         x = torch.cat((state, action), dim=-1)
         x = F.relu(self.linear1(x))
         x = F.relu(self.linear2(x))
-        return self.linear3(x)
+
+        mean = self.mean_output(x)
+        stddev = F.softplus(self.stddev_output(x))
+
+        return mean, stddev
     
     def get_mean_stddev(self, state, action):
-        preds = [self.forward(state, action) for _ in range(self.samples)]
-        preds = torch.stack(preds)
+        means, stddevs = [self.forward(state, action) for _ in range(self.samples)]
+        preds = torch.randn_like(means) * stddevs + means
+
         mean = torch.mean(preds, dim=0)
         stddev = torch.std(preds, dim=0)
         return mean, stddev
@@ -47,9 +53,11 @@ class BNNTransitionModel(nn.Module):
             total_loss = 0.0
 
             for tau in T:
-                states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device).to(device)
-                next_states = self.forward(states, actions)
-                loss = torch.sum((next_states - states)**2)
+                states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device)
+                mean, stddev = self.forward(states, actions)
+                # reparametrization trick to be able to backpropagate through the sampling
+                next_states = (torch.randn_like(mean) * stddev + mean)
+                loss = (torch.sum((next_states - states)**2)) / len(states)
                 total_loss += loss.item()
                 optimizer.zero_grad()
                 loss.backward()

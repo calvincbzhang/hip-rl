@@ -32,58 +32,59 @@ class Policy(nn.Module):
         return mean, stddev
     
     def train_policy(self, initial_state, transition_model, reward_model, epochs=1000, steps=100, lr=0.001, gamma=0.99):
-        optimizer = optim.Adam(self.parameters(), lr=lr)
+        pass
+        # optimizer = optim.Adam(self.parameters(), lr=lr)
 
-        for epoch in range(epochs):
-            state = initial_state
-            rewards = []
-            log_probs = []
+        # for epoch in range(epochs):
+        #     state = initial_state
+        #     rewards = []
+        #     log_probs = []
 
-            for step in range(steps):
-                # Forward pass through the policy network
-                state = torch.tensor(state, dtype=torch.float32)
-                mean, stddev = self.forward(state)
-                dist = torch.distributions.Normal(mean, stddev)
+        #     for step in range(steps):
+        #         # Forward pass through the policy network
+        #         state = torch.tensor(state, dtype=torch.float32)
+        #         mean, stddev = self.forward(state)
+        #         dist = torch.distributions.Normal(mean, stddev)
 
-                # Sample an action from the distribution
-                action = dist.sample()
+        #         # Sample an action from the distribution
+        #         action = dist.sample()
 
-                # Compute log probability of the action
-                log_prob = dist.log_prob(action)
+        #         # Compute log probability of the action
+        #         log_prob = dist.log_prob(action)
 
-                # Perform the action and observe the next state and reward
-                next_state = transition_model(state, action)
-                reward = reward_model(state, action)
+        #         # Perform the action and observe the next state and reward
+        #         next_state = transition_model(state, action)
+        #         reward = reward_model(state, action)
 
-                rewards.append(reward)
-                log_probs.append(log_prob)
+        #         rewards.append(reward)
+        #         log_probs.append(log_prob)
 
-                state = next_state
+        #         state = next_state
             
-            # Compute the discounted rewards
-            R = 0
-            policy_loss = []
-            rtg = []
+        #     # Compute the discounted rewards
+        #     R = 0
+        #     policy_loss = []
+        #     rtg = []
 
-            for r in rewards[::-1]:
-                R = r + gamma * R
-                rtg.insert(0, R)
+        #     for r in rewards[::-1]:
+        #         R = r + gamma * R
+        #         rtg.insert(0, R)
 
-            # Normalize the rewards
-            rtg = torch.tensor(rtg)
-            rtg = (rtg - rtg.mean()) / (rtg.std() + eps)
+        #     # Normalize the rewards
+        #     rtg = torch.tensor(rtg)
+        #     rtg = (rtg - rtg.mean()) / (rtg.std() + eps)
 
-            # Compute the policy loss
-            for log_prob, reward in zip(log_probs, rtg):
-                policy_loss.append(-log_prob * reward)
+        #     # Compute the policy loss
+        #     for log_prob, reward in zip(log_probs, rtg):
+        #         policy_loss.append(-log_prob * reward)
             
-            policy_loss = torch.stack(policy_loss).sum(dim=0).requires_grad_(True)
+        #     policy_loss = torch.stack(policy_loss).sum(dim=0).requires_grad_(True)
 
-            # Update the policy network
-            optimizer.zero_grad()
-            policy_loss.backward()
-            optimizer.step()
+        #     # Update the policy network
+        #     optimizer.zero_grad()
+        #     policy_loss.backward()
+        #     optimizer.step()
 
-            if epoch % 100 == 0:
-                print(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")
-                logging.info(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")
+        #     if epoch % 100 == 0:
+        #         print(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")
+        #         logging.info(f"Epoch {epoch}/{epochs}, Policy Loss: {policy_loss}")

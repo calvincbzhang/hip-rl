@@ -2,9 +2,11 @@ import gym
 import torch
 import argparse
 import yaml
+import wandb
 import numpy as np
 
 from hip_rl import HIPRL
+from hallucination_wrapper import HallucinationWrapper
 
 import logging
 import datetime
@@ -37,7 +39,8 @@ if __name__ == "__main__":
     with open('configs/' + args.config) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    # TODO: add wandb support
+    # wandb support
+    wandb.init(project="hip-rl", config=config)
 
     # set up logging
     timestap = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -49,10 +52,13 @@ if __name__ == "__main__":
 
     # set up environment
     env = gym.make(config['env_name'])
-    env = ClipReward(env, -1, 1)
+    env = HallucinationWrapper(env)
+    # env = ClipReward(env, -1, 1)
 
     # initialize agent
     agent = HIPRL(env, config)
 
     # train agent
     agent.train()
+
+    wandb.finish()

@@ -1,0 +1,35 @@
+wandb_version: 1
+
+env_name:
+  desc: null
+  value: Swimmer-v4
+episodes:
+  desc: null
+  value: 1000
+steps:
+  desc: null
+  value: 1000
+_wandb:
+  desc: null
+  value:
+    python_version: 3.11.2
+    cli_version: 0.15.4
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1686140856.565028
+    t:
+      1:
+      - 1
+      - 55
+      2:
+      - 1
+      - 55
+      3:
+      - 16
+      - 23
+      4: 3.11.2
+      5: 0.15.4
+      8:
+      - 4
+      - 5

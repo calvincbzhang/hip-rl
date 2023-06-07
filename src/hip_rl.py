@@ -5,8 +5,13 @@ import logging
 from policy import Policy
 from reward_model import BNNRewardModel
 from transition_model import BNNTransitionModel
+from hallucinated_model import HallucinatedModel
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+# TODO: Planning function
+# TODO: Policy search function
 
 class HIPRL:
     def __init__(self, env, config):
@@ -20,7 +25,8 @@ class HIPRL:
 
         self.policy = Policy(self.state_dim, self.action_dim).to(device)
         self.reward_model = BNNRewardModel(self.state_dim, self.action_dim).to(device)
-        self.transition_model = BNNTransitionModel(self.state_dim, self.action_dim).to(device)
+        self.base_model = BNNTransitionModel(self.state_dim, self.action_dim).to(device)
+        self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -41,10 +47,10 @@ class HIPRL:
 
             print(f"======== Episode {episode+1}/{self.episodes} ========")
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
-             
-            if episode >= 1:
-                #  train policy
-                self.train_policy()
+            
+            # if episode >= 10:
+            #     #  train policy
+            #     self.train_policy()
 
             # execute policy
             trajectory, cum_reward = self.execute_policy()
@@ -59,7 +65,12 @@ class HIPRL:
             self.R.append(cum_reward)
 
             # compute true preference
-            preference = cum_reward - cum_reward_old
+            preference = (cum_reward - cum_reward_old) #/ (self.steps)
+
+            # compute episode preference error
+            predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)
+            preference_deviation = np.absolute(preference - predicted_preference)
+            wandb.log({"preference_deviation": preference_deviation})
 
             # append preference [trajectory, trajectory_old, preference]
             self.P.append([trajectory, trajectory_old, preference])
@@ -67,9 +78,9 @@ class HIPRL:
             # train models
             self.train_models()
 
-            if episode >= 1:
-                # test policy so far
-                self.test_policy()
+            # if episode >= 10:
+            #     # test policy so far
+            #     self.test_policy()
 
     def execute_policy(self):
             
@@ -83,6 +94,9 @@ class HIPRL:
         # cumulative reward
         cum_reward = 0
 
+        # cumulative transition deviation
+        cum_transition_deviation = 0
+
         # execute policy
         for step in range(self.steps):
 
@@ -95,6 +109,11 @@ class HIPRL:
             # execute action
             next_state, reward, _, _, _ = self.env.step(action)
 
+            # compute step transition error
+            predicted_next_state = self.base_model.forward(state, action).detach().numpy()
+            transition_deviation = np.sum(np.absolute(next_state - predicted_next_state)) / self.state_dim
+            cum_transition_deviation += transition_deviation
+
             # append to trajectory
             trajectory.append(state)
             trajectory.append(action)
@@ -104,6 +123,8 @@ class HIPRL:
 
             # update cumulative reward
             cum_reward += reward
+
+        wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps})
 
         return trajectory, cum_reward
     
@@ -117,19 +138,19 @@ class HIPRL:
         # train transition model
         print("Training transition model...")
         logging.info("Training transition model...")
-        self.transition_model.train_model(self.T)
+        self.base_model.train_model(self.T)
 
-    def train_policy(self):
+    # def train_policy(self):
             
-        # train policy
-        print("Training policy...")
-        logging.info("Training policy...")
-        self.policy.train_policy(self.initial_state, self.transition_model, self.reward_model)
+    #     # train policy
+    #     print("Training policy...")
+    #     logging.info("Training policy...")
+    #     self.policy.train_policy(self.initial_state, self.hallucinated_model, self.reward_model)
 
-    def test_policy(self):
+    # def test_policy(self):
                 
-        # test policy
-        print("Testing policy...")
-        logging.info("Testing policy...")
-        trajectory, cum_reward = self.execute_policy()
-        print(f"Cumulative reward: {cum_reward}")
+    #     # test policy
+    #     print("Testing policy...")
+    #     logging.info("Testing policy...")
+    #     trajectory, cum_reward = self.execute_policy()
+    #     print(f"Cumulative reward: {cum_reward}")

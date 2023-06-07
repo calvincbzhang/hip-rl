@@ -13,6 +13,7 @@ torch = "^2.0.1"
 pyyaml = "^6.0"
 numpy = "^1.24.3"
 blitz-bayesian-pytorch = "^0.2.8"
+wandb = "^0.15.4"
 
 
 [build-system]

@@ -20,16 +20,16 @@ class Policy(nn.Module):
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.mean_output = nn.Linear(hidden_dim, action_dim)
-        self.var_output = nn.Linear(hidden_dim, action_dim)
+        self.stddev_output = nn.Linear(hidden_dim, action_dim)
 
     def forward(self, state):
         x = torch.relu(self.fc1(state))
         x = torch.relu(self.fc2(x))
         
         mean = self.mean_output(x)
-        var = torch.exp(self.var_output(x))  # Ensure variance is positive
-        
-        return mean, var
+        stddev = F.softplus(self.stddev_output(x))
+
+        return mean, stddev
     
     def train_policy(self, initial_state, transition_model, reward_model, epochs=1000, steps=100, lr=0.001, gamma=0.99):
         optimizer = optim.Adam(self.parameters(), lr=lr)
@@ -42,8 +42,8 @@ class Policy(nn.Module):
             for step in range(steps):
                 # Forward pass through the policy network
                 state = torch.tensor(state, dtype=torch.float32)
-                mean, var = self.forward(state)
-                dist = torch.distributions.MultivariateNormal(mean, torch.diag_embed(var))
+                mean, stddev = self.forward(state)
+                dist = torch.distributions.Normal(mean, stddev)
 
                 # Sample an action from the distribution
                 action = dist.sample()

@@ -1,4 +1,4 @@
 env_name: Swimmer-v4
 
 episodes: 1000
-steps: 10
+steps: 250

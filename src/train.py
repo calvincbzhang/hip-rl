@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # set up environment
     env = gym.make(config['env_name'])
-    env = HallucinationWrapper(env)
+    # env = HallucinationWrapper(env)
     # env = ClipReward(env, -1, 1)
 
     # initialize agent

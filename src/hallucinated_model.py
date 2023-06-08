@@ -18,10 +18,10 @@ class HallucinatedModel(nn.Module):
         self.action_dim = self.original_action_dim + self.base_model.state_dim
 
     def forward(self, state, action):
-        control_action = action[:, :self.original_action_dim]
-        optimism_vars = action[:, self.original_action_dim:]
+        control_action = action[:self.original_action_dim]
+        optimism_vars = action[self.original_action_dim:]
         optimism_vars = torch.clamp(optimism_vars, -1.0, 1.0)
 
-        mean, stddev = self.base_model.get_mean_stddev(state, control_action)
+        mean, stddev = self.base_model.forward(state, control_action)
 
         return mean + self.beta * (optimism_vars @ torch.sqrt(stddev))

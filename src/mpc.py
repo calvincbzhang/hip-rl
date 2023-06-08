@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class MPCPolicy(nn.Module):
-    def __init__(self, dynamics_model, reward_fn, planning_horizon=10, optim_steps=5, num_candidates=20, top_k=5):
+    def __init__(self, dynamics_model, reward_fn, planning_horizon=20, optim_steps=5, num_candidates=100, top_k=10):
         super(MPCPolicy, self).__init__()
         self.dynamics_model = dynamics_model
         self.reward_fn = reward_fn
@@ -48,6 +48,8 @@ class MPCPolicy(nn.Module):
         samples = torch.distributions.MultivariateNormal(self.mean, self.cov).sample((self.num_candidates,))
         # reshape the samples to (num_candidates, planning_horizon, action_dim)
         samples = samples.reshape(self.num_candidates, self.planning_horizon, self.dynamics_model.action_dim)
+        # clamp the actions to -1 and 1
+        samples = torch.clamp(samples, -1, 1)
 
         # evaluate the reward for each action sequence
         rewards = self.evaluate_candidates(state, samples)

@@ -102,7 +102,7 @@ class HIPRL:
         # execute policy
         for step in range(self.steps):
 
-            if step+1 % 10 == 0:
+            if (step+1) % 10 == 0:
                 print(f"======== Step {step+1}/{self.steps} ========")
                 logging.info(f"======== Step {step+1}/{self.steps} ========")
 

@@ -115,9 +115,9 @@ class SAC(object):
     
     def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=100):
 
-        state = torch.FloatTensor(init_states)
-
         for epoch in range(epochs):
+
+            state = torch.FloatTensor(init_states)
             
             state_batch = []
             action_batch = []
@@ -129,10 +129,6 @@ class SAC(object):
                 action = self.select_action(state)
                 next_state = dynamics_model.get_next_state(state, action)
                 reward = reward_fn.get_reward(state, action)
-
-                # check is state contains nan
-                if torch.isnan(next_state).any():
-                    print("Nan in next state")
 
                 state_batch.append(state)
                 action_batch.append(action)

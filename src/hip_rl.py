@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import logging
 
-from policy import Policy
+from sac import SAC
 from mpc import MPCPolicy
 from reward_model import RewardModel
 from transition_model import EnsembleTransitionModel
@@ -10,8 +10,6 @@ from hallucinated_model import HallucinatedModel
 import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-# TODO: Policy search function
 
 class HIPRL:
     def __init__(self, env, config):
@@ -27,7 +25,7 @@ class HIPRL:
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
         # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        self.policy = MPCPolicy(self.base_model, self.reward_model).to(device)
+        self.policy = SAC(self.state_dim, self.action_dim, env.action_space)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -35,6 +33,9 @@ class HIPRL:
         self.R = []
     
     def train(self):
+
+        # get a set of initial states of length 100
+        self.init_states = [self.env.reset()[0] for _ in range(100)]
 
         # execute policy ones to get initial trajectory
         trajectory, cum_reward = self.execute_policy()
@@ -49,8 +50,9 @@ class HIPRL:
             print(f"======== Episode {episode+1}/{self.episodes} ========")
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
             
-            # # train policy
-            # self.train_policy()
+            # train policy
+            if episode > 0:
+                self.train_policy()
 
             # execute policy
             trajectory, cum_reward = self.execute_policy()
@@ -102,19 +104,14 @@ class HIPRL:
         # execute policy
         for step in range(self.steps):
 
-            if (step+1) % 10 == 0:
-                print(f"======== Step {step+1}/{self.steps} ========")
-                logging.info(f"======== Step {step+1}/{self.steps} ========")
-
             # get action from policy
-            action = self.policy(torch.FloatTensor(state).to(device))
+            action = self.policy.select_action(torch.FloatTensor(state).to(device))
             action = action.detach().numpy()
 
             next_state, reward, _, _, _ = self.env.step(action)
 
             # compute step transition error
-            mean, stddev = self.base_model.forward(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))
-            predicted_next_state = (torch.randn(self.state_dim).to(device) * stddev + mean).detach().numpy()
+            predicted_next_state = (self.base_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).detach().numpy()
             transition_deviation = np.sum(np.sqrt((next_state - predicted_next_state)**2))
             cum_transition_deviation += transition_deviation
 
@@ -146,12 +143,12 @@ class HIPRL:
         logging.info("Training transition model...")
         self.base_model.train_model(self.T)
 
-    # def train_policy(self):
+    def train_policy(self):
             
-    #     # train policy
-    #     print("Training policy...")
-    #     logging.info("Training policy...")
-    #     self.policy.train_policy(self.initial_state, self.hallucinated_model, self.reward_model)
+        # train policy
+        print("Training policy...")
+        logging.info("Training policy...")
+        self.policy.train(self.base_model, self.reward_model, self.init_states)
 
     # def test_policy(self):
                 

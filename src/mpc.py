@@ -49,7 +49,6 @@ class MPCPolicy(nn.Module):
         # reshape the samples to (num_candidates, planning_horizon, action_dim)
         samples = samples.reshape(self.num_candidates, self.planning_horizon, self.dynamics_model.action_dim)
         # clamp the actions to -1 and 1
-        samples = torch.clamp(samples, -1, 1)
 
         # evaluate the reward for each action sequence
         rewards = self.evaluate_candidates(state, samples)

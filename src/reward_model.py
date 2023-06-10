@@ -29,25 +29,47 @@ class RewardModel(nn.Module):
         x = F.relu(self.linear2(x))
 
         mean = self.mean_output(x)
-        stddev = F.softplus(self.stddev_output(x))
+        stddev = torch.exp(self.stddev_output(x)) + 1e-5
 
         return mean, stddev
+    
+    def get_reward(self, state, action):
+        mean, stddev = self.forward(state, action)
+        reward = torch.randn_like(mean) * stddev + mean
+        return reward
+    
+    def get_preference(self, tau1, tau2):
+        states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32).to(device), torch.tensor(tau1[1::2], dtype=torch.float32).to(device)
+        states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32).to(device), torch.tensor(tau2[1::2], dtype=torch.float32).to(device)
+
+        mean_tau1, stddev_tau1 = self.forward(states1, actions1)
+        mean_tau2, stddev_tau2 = self.forward(states2, actions2)
+
+        r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
+        r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
+
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
+        return pref.item()
+    
+    def get_preference_tensor(self, tau1, tau2):
+        states1, actions1 = tau1[::2], tau1[1::2]
+        states2, actions2 = tau2[::2], tau2[1::2]
+
+        mean_tau1, stddev_tau1 = self.forward(states1, actions1)
+        mean_tau2, stddev_tau2 = self.forward(states2, actions2)
+
+        r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
+        r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
+
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2))
+        return pref
     
     def compute_loss(self, P):
         loss = 0.0
         n_pairs = 0
 
         for tau1, tau2, preference in P:
-            states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32).to(device), torch.tensor(tau1[1::2], dtype=torch.float32).to(device)
-            states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32).to(device), torch.tensor(tau2[1::2], dtype=torch.float32).to(device)
-
-            mean_tau1, stddev_tau1 = self.forward(states1, actions1)
-            mean_tau2, stddev_tau2 = self.forward(states2, actions2)
-
-            r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
-            r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
-
-            pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
+            pref = self.get_preference_tensor(tau1, tau2)
             loss += ((pref - preference)**2)
             n_pairs += 1
 
@@ -70,16 +92,3 @@ class RewardModel(nn.Module):
                 if (epoch+1) % 10 == 0:
                     print(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
                     logging.info(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
-
-    def get_preference(self, tau1, tau2):
-        states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32).to(device), torch.tensor(tau1[1::2], dtype=torch.float32).to(device)
-        states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32).to(device), torch.tensor(tau2[1::2], dtype=torch.float32).to(device)
-
-        mean_tau1, stddev_tau1 = self.forward(states1, actions1)
-        mean_tau2, stddev_tau2 = self.forward(states2, actions2)
-
-        r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
-        r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
-
-        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
-        return pref.item()

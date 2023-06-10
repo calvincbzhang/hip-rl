@@ -9,6 +9,32 @@ import logging
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
+class TransitionModel(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim=32):
+        super(TransitionModel, self).__init__()
+
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.hidden_dim = hidden_dim
+
+        self.linear1 = nn.Linear(state_dim + action_dim, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
+        self.mean_output = nn.Linear(hidden_dim, state_dim)
+        self.stddev_output = nn.Linear(hidden_dim, state_dim)
+
+    def forward(self, state, action):
+        state = torch.tensor(state, dtype=torch.float32)
+        action = torch.tensor(action, dtype=torch.float32)
+        x = torch.cat((state, action), dim=-1)
+        x = F.relu(self.linear1(x))
+        x = F.relu(self.linear2(x))
+
+        mean = self.mean_output(x)
+        stddev = F.softplus(self.stddev_output(x)) + 1e-5
+
+        return mean, stddev
+
+
 class EnsembleTransitionModel(nn.Module):
     """
     Ensamble of TransitionModel with N models (implements a probabilistic ensemble)
@@ -40,6 +66,19 @@ class EnsembleTransitionModel(nn.Module):
 
         return means, stddevs
     
+    def get_next_state(self, state, action):
+        mean, stddev = self.forward(state, action)
+        next_state = torch.randn_like(mean) * stddev + mean
+        return next_state
+    
+    def get_next_state_seprate(self, state, action):
+        means, stddevs = self.forward_seprate(state, action)
+        next_states = []
+        for mean, stddev in zip(means, stddevs):
+            next_state = torch.randn_like(mean) * stddev + mean
+            next_states.append(next_state)
+        return next_states
+    
     def train_model(self, T, epochs=1000, lr=0.001):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         if len(T) > 10:
@@ -51,9 +90,7 @@ class EnsembleTransitionModel(nn.Module):
 
             for tau in T:
                 states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device)
-                mean, stddev = self.forward(states, actions)
-                # reparametrization trick to be able to backpropagate through the sampling
-                next_states = (torch.randn_like(mean) * stddev + mean)
+                next_states = self.get_next_state(states, actions)
                 loss = (torch.sum((next_states - states)**2)) / len(states)
                 total_loss += loss.item()
                 optimizer.zero_grad()
@@ -65,29 +102,3 @@ class EnsembleTransitionModel(nn.Module):
             if (epoch+1) % 100 == 0:
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
                 logging.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
-
-
-class TransitionModel(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=32):
-        super(TransitionModel, self).__init__()
-
-        self.state_dim = state_dim
-        self.action_dim = action_dim
-        self.hidden_dim = hidden_dim
-
-        self.linear1 = nn.Linear(state_dim + action_dim, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
-        self.mean_output = nn.Linear(hidden_dim, state_dim)
-        self.stddev_output = nn.Linear(hidden_dim, state_dim)
-
-    def forward(self, state, action):
-        state = torch.tensor(state, dtype=torch.float32)
-        action = torch.tensor(action, dtype=torch.float32)
-        x = torch.cat((state, action), dim=-1)
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-
-        mean = self.mean_output(x)
-        stddev = F.softplus(self.stddev_output(x))
-
-        return mean, stddev

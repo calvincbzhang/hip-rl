@@ -69,6 +69,7 @@ class Policy(nn.Module):
 
         mean = self.mean_output(x)
         std = F.softplus(self.stddev_output(x)) + 1e-5
+        std = torch.clamp(std, 0.0, 5)
 
         return mean, std
 

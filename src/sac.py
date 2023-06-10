@@ -112,7 +112,7 @@ class SAC(object):
         action, _ = self.policy.sample(state)
         return action
     
-    def train(self, dynamics_model, reward_fn, init_states, horizon=250, epochs=100):
+    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=100):
 
         state = torch.FloatTensor(init_states)
 

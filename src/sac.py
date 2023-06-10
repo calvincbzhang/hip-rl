@@ -63,13 +63,15 @@ class Policy(nn.Module):
         self.mean_output = nn.Linear(hidden_dim, action_dim)
         self.stddev_output = nn.Linear(hidden_dim, action_dim)
 
+        self.apply(weights_init_)
+
     def forward(self, state):
         x = torch.relu(self.fc1(state))
         x = torch.relu(self.fc2(x))
 
         mean = self.mean_output(x)
         std = F.softplus(self.stddev_output(x)) + 1e-5
-        std = torch.clamp(std, 0.0, 5)
+        std = torch.clamp(std, 0.0, 10.0)
 
         return mean, std
 
@@ -128,8 +130,9 @@ class SAC(object):
                 next_state = dynamics_model.get_next_state(state, action)
                 reward = reward_fn.get_reward(state, action)
 
-                if torch.max(next_state) > 10000 or torch.min(next_state) < -10000 or torch.max(reward) > 10000 or torch.min(reward) < -10000:
-                    print("Unstable!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                # check is state contains nan
+                if torch.isnan(next_state).any():
+                    print("Nan in next state")
 
                 state_batch.append(state)
                 action_batch.append(action)

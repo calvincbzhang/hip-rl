@@ -76,7 +76,6 @@ class Policy(nn.Module):
     def sample(self, state):
 
         mean, std = self.forward(state)
-
         normal = Normal(mean, std)
 
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
@@ -128,6 +127,9 @@ class SAC(object):
                 action = self.select_action(state)
                 next_state = dynamics_model.get_next_state(state, action)
                 reward = reward_fn.get_reward(state, action)
+
+                if torch.max(next_state) > 10000 or torch.min(next_state) < -10000 or torch.max(reward) > 10000 or torch.min(reward) < -10000:
+                    print("Unstable!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
                 state_batch.append(state)
                 action_batch.append(action)

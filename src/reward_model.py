@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import logging
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -94,3 +95,5 @@ class RewardModel(nn.Module):
                 if (epoch+1) % 10 == 0:
                     print(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
                     logging.info(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
+                
+                wandb.log({"Preference Loss": loss.item()})

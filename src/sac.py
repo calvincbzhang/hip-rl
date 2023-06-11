@@ -1,3 +1,5 @@
+# Code readapted from https://github.com/Xingyu-Lin/mbpo_pytorch
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

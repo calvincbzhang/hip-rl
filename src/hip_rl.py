@@ -57,6 +57,10 @@ class HIPRL:
             # execute policy
             trajectory, cum_reward = self.execute_policy()
 
+            print(f"cum_reward: {cum_reward}")
+            logging.info(f"cum_reward: {cum_reward}")
+            wandb.log({"cum_reward": cum_reward})
+
             # sample trajectory from T and its corresponding reward
             index = np.random.randint(len(self.T))
             trajectory_old = self.T[index]
@@ -72,6 +76,8 @@ class HIPRL:
             # compute episode preference error
             predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)
             preference_deviation = np.absolute(preference - predicted_preference)
+            print(f"preference_deviation: {preference_deviation}")
+            logging.info(f"preference_deviation: {preference_deviation}")
             wandb.log({"preference_deviation": preference_deviation})
 
             # append preference [trajectory, trajectory_old, preference]
@@ -123,9 +129,9 @@ class HIPRL:
             # update cumulative reward
             cum_reward += reward
 
+        print(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
+        logging.info(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
         wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps})
-
-        print(cum_reward)
 
         return trajectory, cum_reward
     

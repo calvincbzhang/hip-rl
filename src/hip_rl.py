@@ -25,7 +25,8 @@ class HIPRL:
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
         # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        self.policy = SAC(self.state_dim, self.action_dim, env.action_space).to(device)
+        self.policy = SAC(self.state_dim, self.action_dim, env.action_space)
+        self.policy = self.policy.to(device)
 
         # trajectories, preferences and rewards
         self.T = []

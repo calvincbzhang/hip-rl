@@ -102,6 +102,10 @@ class Policy(nn.Module):
         log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
 
         return action, log_prob
+    
+    def sample_deterministic(self, state):
+        mean, _ = self.forward(state)
+        return mean
 
 
 class SAC(object):
@@ -125,6 +129,10 @@ class SAC(object):
 
     def select_action(self, state):
         action, _ = self.policy.sample(state)
+        return action
+    
+    def select_action_deterministic(self, state):
+        action = self.policy.sample_deterministic(state)
         return action
     
     def to(self, device):

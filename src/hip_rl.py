@@ -10,6 +10,7 @@ from hallucinated_model import HallucinatedModel
 import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+epsilon = 0.1
 
 class HIPRL:
     def __init__(self, env, config):
@@ -35,11 +36,13 @@ class HIPRL:
     
     def train(self):
 
+        random = True
+
         # get a set of initial states of length 100
         self.init_states = [self.env.reset()[0] for _ in range(100)]
 
         # execute policy ones to get initial trajectory
-        trajectory, cum_reward = self.execute_policy()
+        trajectory, cum_reward = self.execute_policy(random=random)
 
         # append
         self.T.append(trajectory)
@@ -53,10 +56,11 @@ class HIPRL:
             
             # train policy
             if episode > 100:
+                random = False
                 self.train_policy()
 
             # execute policy
-            trajectory, cum_reward = self.execute_policy()
+            trajectory, cum_reward = self.execute_policy(random=random)
 
             print(f"cum_reward: {cum_reward}")
             logging.info(f"cum_reward: {cum_reward}")
@@ -88,7 +92,7 @@ class HIPRL:
             if episode > 99:
                 self.train_models()
 
-    def execute_policy(self):
+    def execute_policy(self, random=False):
 
         print("Executing policy...")
         logging.info("Executing policy...")
@@ -110,8 +114,16 @@ class HIPRL:
         for step in range(self.steps):
 
             # get action from policy
-            action = self.policy.select_action(torch.FloatTensor(state).to(device))
-            action = action.cpu().detach().numpy()
+            if random:
+                action = self.env.action_space.sample()
+            else:
+                # epsilon greedy
+                if np.random.uniform() < epsilon:
+                    action = self.policy.select_action(torch.FloatTensor(state).to(device))
+                else:
+                    action = self.policy.select_action_deterministic(torch.FloatTensor(state).to(device))
+                
+                action = action.cpu().detach().numpy()
 
             next_state, reward, _, _, _ = self.env.step(action)
 

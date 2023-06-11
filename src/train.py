@@ -26,6 +26,16 @@ class ClipReward(gym.RewardWrapper):
     
     def reward(self, reward):
         return np.clip(reward, self.min_reward, self.max_reward)
+    
+
+class ClipObervation(gym.ObservationWrapper):
+    def __init__(self, env, min_obs, max_obs):
+        super().__init__(env)
+        self.min_obs = min_obs
+        self.max_obs = max_obs
+
+    def observation(self, obs):
+        return np.clip(obs, self.min_obs, self.max_obs)
 
 
 if __name__ == "__main__":
@@ -53,7 +63,8 @@ if __name__ == "__main__":
     # set up environment
     env = gym.make(config['env_name'])
     # env = HallucinationWrapper(env)
-    # env = ClipReward(env, -1, 1)
+    env = ClipReward(env, -1000, 1000)
+    env = ClipObervation(env, -1000, 1000)
 
     # initialize agent
     agent = HIPRL(env, config)

@@ -30,7 +30,9 @@ class TransitionModel(nn.Module):
         x = F.relu(self.linear2(x))
 
         mean = self.mean_output(x)
-        stddev = F.softplus(self.stddev_output(x)) + 1e-5
+        mean = torch.clamp(mean, -1000, 1000)
+        stddev = F.softplus(self.stddev_output(x))
+        stddev = torch.clamp(stddev, 1e-6, 1)
 
         return mean, stddev
 
@@ -90,8 +92,8 @@ class EnsembleTransitionModel(nn.Module):
 
             for tau in T:
                 states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device)
-                next_states = self.get_next_state(states, actions)
-                loss = (torch.sum((next_states - states)**2)) / len(states)
+                next_states = self.get_next_state(states[:-1], actions[:-1])
+                loss = F.mse_loss(next_states, states[1:])
                 total_loss += loss.item()
                 optimizer.zero_grad()
                 loss.backward()

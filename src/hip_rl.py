@@ -51,7 +51,7 @@ class HIPRL:
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
             
             # train policy
-            if episode > 0:
+            if episode > 100:
                 self.train_policy()
 
             # execute policy
@@ -67,7 +67,7 @@ class HIPRL:
             self.R.append(cum_reward)
 
             # compute true preference
-            preference = (cum_reward - cum_reward_old) / (self.steps)
+            preference = (cum_reward - cum_reward_old) #/ (self.steps)
 
             # compute episode preference error
             predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)
@@ -78,10 +78,8 @@ class HIPRL:
             self.P.append([trajectory, trajectory_old, preference])
 
             # train models
-            self.train_models()
-
-            # # test policy so far
-            # self.test_policy()
+            if episode > 99:
+                self.train_models()
 
     def execute_policy(self):
 
@@ -112,7 +110,7 @@ class HIPRL:
 
             # compute step transition error
             predicted_next_state = (self.base_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).detach().numpy()
-            transition_deviation = np.sum(np.sqrt((next_state - predicted_next_state)**2))
+            transition_deviation = np.sqrt(np.sum((next_state - predicted_next_state)**2))
             cum_transition_deviation += transition_deviation
 
             # append to trajectory
@@ -149,11 +147,3 @@ class HIPRL:
         print("Training policy...")
         logging.info("Training policy...")
         self.policy.train(self.base_model, self.reward_model, self.init_states)
-
-    # def test_policy(self):
-                
-    #     # test policy
-    #     print("Testing policy...")
-    #     logging.info("Testing policy...")
-    #     trajectory, cum_reward = self.execute_policy()
-    #     print(f"Cumulative reward: {cum_reward}")

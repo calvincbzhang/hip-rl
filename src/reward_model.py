@@ -29,7 +29,9 @@ class RewardModel(nn.Module):
         x = F.relu(self.linear2(x))
 
         mean = self.mean_output(x)
-        stddev = torch.exp(self.stddev_output(x)) + 1e-5
+        mean = torch.clamp(mean, -1000, 1000)
+        stddev = torch.exp(self.stddev_output(x))
+        stddev = torch.clamp(stddev, 1e-6, 1)
 
         return mean, stddev
     
@@ -48,7 +50,7 @@ class RewardModel(nn.Module):
         r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
         r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
 
-        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) / len(r_tau1)
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
         return pref.item()
     
     def get_preference_tensor(self, tau1, tau2):
@@ -61,7 +63,7 @@ class RewardModel(nn.Module):
         r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
         r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
 
-        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) / len(r_tau1)
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
         return pref
     
     def compute_loss(self, P):
@@ -76,7 +78,7 @@ class RewardModel(nn.Module):
         loss = loss / n_pairs
         return loss
     
-    def train_model(self, P, epochs=10, lr=0.01):
+    def train_model(self, P, epochs=2, lr=0.01):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         if len(P) > 100:
             # use last preference and sample 99 random preferences

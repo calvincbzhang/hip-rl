@@ -39,9 +39,13 @@ class QNetwork(nn.Module):
         x1 = F.relu(self.linear2(x1))
         x1 = self.linear3(x1)
 
+        # x1 = torch.tanh(x1)
+
         x2 = F.relu(self.linear4(xu))
         x2 = F.relu(self.linear5(x2))
         x2 = self.linear6(x2)
+
+        # x2 = torch.tanh(x2)
 
         return x1, x2
 
@@ -53,6 +57,10 @@ class Policy(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.hidden_dim = hidden_dim
+        self.action_space = action_space
+
+        self.min_low = np.min(self.action_space.low)
+        self.max_high = np.max(self.action_space.high)
 
         self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.)
         self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
@@ -70,22 +78,25 @@ class Policy(nn.Module):
         x = torch.relu(self.fc2(x))
 
         mean = self.mean_output(x)
-        std = F.softplus(self.stddev_output(x)) + 1e-5
-        std = torch.clamp(std, 0.0, 10.0)
+        mean = torch.clamp(mean, self.min_low, self.max_high)
+        stddev = F.softplus(self.stddev_output(x))
+        stddev = torch.clamp(stddev, 1e-6, 1)
 
-        return mean, std
+        return mean, stddev
 
     def sample(self, state):
 
-        mean, std = self.forward(state)
-        normal = Normal(mean, std)
+        mean, stddev = self.forward(state)
+        
+        normal = Normal(mean, stddev)
 
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
         y_t = torch.tanh(x_t)
-        action = y_t * self.action_scale + self.action_bias
-        log_prob = normal.log_prob(action)
+        action = y_t * self.action_scale + self.action_bias  # bound the action
+
+        log_prob = normal.log_prob(x_t)
         # Enforcing Action Bound
-        log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-5)
+        log_prob -= torch.log(self.action_scale * (1 - y_t.pow(2)) + 1e-6)
 
         return action, log_prob
 
@@ -113,7 +124,7 @@ class SAC(object):
         action, _ = self.policy.sample(state)
         return action
     
-    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=200, batch_size=256):
+    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=500, batch_size=256):
 
         for epoch in range(epochs):
 

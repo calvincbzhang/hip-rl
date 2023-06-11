@@ -111,7 +111,7 @@ class HIPRL:
 
             # get action from policy
             action = self.policy.select_action(torch.FloatTensor(state).to(device))
-            action = action.detach().numpy()
+            action = action.cpu().detach().numpy()
 
             next_state, reward, _, _, _ = self.env.step(action)
 

@@ -116,7 +116,7 @@ class HIPRL:
             next_state, reward, _, _, _ = self.env.step(action)
 
             # compute step transition error
-            predicted_next_state = (self.base_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).detach().numpy()
+            predicted_next_state = (self.base_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).cpu().detach().numpy()
             transition_deviation = np.sqrt(np.sum((next_state - predicted_next_state)**2))
             cum_transition_deviation += transition_deviation
 

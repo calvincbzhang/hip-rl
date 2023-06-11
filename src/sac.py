@@ -65,8 +65,8 @@ class Policy(nn.Module):
         self.min_low = np.min(self.action_space.low)
         self.max_high = np.max(self.action_space.high)
 
-        self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.)
-        self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.)
+        self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.).to(device)
+        self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.).to(device)
 
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)

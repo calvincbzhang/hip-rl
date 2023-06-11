@@ -48,7 +48,7 @@ class RewardModel(nn.Module):
         r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
         r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
 
-        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) #/ len(r_tau1)
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) / len(r_tau1)
         return pref.item()
     
     def get_preference_tensor(self, tau1, tau2):
@@ -61,7 +61,7 @@ class RewardModel(nn.Module):
         r_tau1 = torch.randn_like(mean_tau1) * stddev_tau1 + mean_tau1
         r_tau2 = torch.randn_like(mean_tau2) * stddev_tau2 + mean_tau2
 
-        pref = (torch.sum(r_tau1) - torch.sum(r_tau2))
+        pref = (torch.sum(r_tau1) - torch.sum(r_tau2)) / len(r_tau1)
         return pref
     
     def compute_loss(self, P):

@@ -91,7 +91,7 @@ class Policy(nn.Module):
 
 
 class SAC(object):
-    def __init__(self, state_dim, action_dim, action_space, gamma=0.99, tau=0.05, alpha=0.2, hidden_dim=32, lr=0.001):
+    def __init__(self, state_dim, action_dim, action_space, gamma=0.99, tau=0.05, alpha=0.2, hidden_dim=32, lr=0.0003):
 
         self.gamma = gamma
         self.tau = tau
@@ -113,7 +113,7 @@ class SAC(object):
         action, _ = self.policy.sample(state)
         return action
     
-    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=100):
+    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=200, batch_size=256):
 
         for epoch in range(epochs):
 
@@ -136,12 +136,15 @@ class SAC(object):
                 next_state_batch.append(next_state)
 
                 state = next_state
-            
-            # convert lists of tensors to tensors
-            state_batch = torch.stack(state_batch)
-            action_batch = torch.stack(action_batch)
-            reward_batch = torch.stack(reward_batch)
-            next_state_batch = torch.stack(next_state_batch)
+
+            # sample random indices
+            indices = np.random.randint(0, horizon, size=batch_size)
+
+            # convert to tensors
+            state_batch = torch.stack(state_batch)[indices]
+            action_batch = torch.stack(action_batch)[indices]
+            reward_batch = torch.stack(reward_batch)[indices]
+            next_state_batch = torch.stack(next_state_batch)[indices]
 
             qf1_loss, qf2_loss, policy_loss = self.update_parameters((state_batch, action_batch, reward_batch, next_state_batch), epoch)
 
@@ -170,6 +173,10 @@ class SAC(object):
         qf1, qf2 = self.critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
         qf1_loss = F.mse_loss(qf1, next_q_value) # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         qf2_loss = F.mse_loss(qf2, next_q_value) # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
+
+        if qf1_loss > 1000000 or qf2_loss > 1000000:
+            print(f"QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}")
+            print(next_q_value)
 
         pi, log_pi = self.policy.sample(state_batch)
 

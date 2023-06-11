@@ -67,7 +67,7 @@ class HIPRL:
             self.R.append(cum_reward)
 
             # compute true preference
-            preference = (cum_reward - cum_reward_old) #/ (self.steps)
+            preference = (cum_reward - cum_reward_old) / (self.steps)
 
             # compute episode preference error
             predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)

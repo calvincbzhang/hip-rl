@@ -127,6 +127,11 @@ class SAC(object):
         action, _ = self.policy.sample(state)
         return action
     
+    def to(self, device):
+        self.critic.to(device)
+        self.critic_target.to(device)
+        self.policy.to(device)
+    
     def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=250, batch_size=256):
 
         for epoch in range(epochs):
@@ -155,10 +160,10 @@ class SAC(object):
             indices = np.random.randint(0, horizon, size=batch_size)
 
             # convert to tensors
-            state_batch = torch.stack(state_batch)[indices]
-            action_batch = torch.stack(action_batch)[indices]
-            reward_batch = torch.stack(reward_batch)[indices]
-            next_state_batch = torch.stack(next_state_batch)[indices]
+            state_batch = torch.stack(state_batch)[indices].to(device)
+            action_batch = torch.stack(action_batch)[indices].to(device)
+            reward_batch = torch.stack(reward_batch)[indices].to(device)
+            next_state_batch = torch.stack(next_state_batch)[indices].to(device)
 
             qf1_loss, qf2_loss, policy_loss = self.update_parameters((state_batch, action_batch, reward_batch, next_state_batch), epoch)
 

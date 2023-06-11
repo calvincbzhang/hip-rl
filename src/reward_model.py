@@ -55,8 +55,8 @@ class RewardModel(nn.Module):
         return pref.item()
     
     def get_preference_tensor(self, tau1, tau2):
-        states1, actions1 = tau1[::2], tau1[1::2]
-        states2, actions2 = tau2[::2], tau2[1::2]
+        states1, actions1 = torch.tensor(tau1[::2], dtype=torch.float32).to(device), torch.tensor(tau1[1::2], dtype=torch.float32).to(device)
+        states2, actions2 = torch.tensor(tau2[::2], dtype=torch.float32).to(device), torch.tensor(tau2[1::2], dtype=torch.float32).to(device)
 
         mean_tau1, stddev_tau1 = self.forward(states1, actions1)
         mean_tau2, stddev_tau2 = self.forward(states2, actions2)

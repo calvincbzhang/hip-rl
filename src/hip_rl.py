@@ -114,16 +114,13 @@ class HIPRL:
         for step in range(self.steps):
 
             # get action from policy
-            if random:
-                action = self.env.action_space.sample()
+            # epsilon greedy
+            if random or np.random.uniform() < epsilon:
+                action = self.policy.select_action(torch.FloatTensor(state).to(device))
             else:
-                # epsilon greedy
-                if np.random.uniform() < epsilon:
-                    action = self.policy.select_action(torch.FloatTensor(state).to(device))
-                else:
-                    action = self.policy.select_action_deterministic(torch.FloatTensor(state).to(device))
+                action = self.policy.select_action_deterministic(torch.FloatTensor(state).to(device))
                 
-                action = action.cpu().detach().numpy()
+            action = action.cpu().detach().numpy()
 
             next_state, reward, _, _, _ = self.env.step(action)
 

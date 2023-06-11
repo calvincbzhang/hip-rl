@@ -8,6 +8,7 @@ from torch.distributions import Normal
 
 import numpy as np
 import logging
+import wandb
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -126,7 +127,7 @@ class SAC(object):
         action, _ = self.policy.sample(state)
         return action
     
-    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=500, batch_size=256):
+    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=250, batch_size=256):
 
         for epoch in range(epochs):
 
@@ -165,6 +166,9 @@ class SAC(object):
                 print(f"Epoch: {epoch+1}/{epochs}, QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}, Policy Loss: {policy_loss}")
                 logging.info(f"Epoch: {epoch+1}/{epochs}, QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}, Policy Loss: {policy_loss}")
 
+            wandb.log({"QF1 Loss": qf1_loss})
+            wandb.log({"QF2 Loss": qf2_loss})
+            wandb.log({"Policy Loss": policy_loss})
 
 
     def update_parameters(self, memory, updates):
@@ -186,10 +190,6 @@ class SAC(object):
         qf1, qf2 = self.critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
         qf1_loss = F.mse_loss(qf1, next_q_value) # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
         qf2_loss = F.mse_loss(qf2, next_q_value) # JQ = 𝔼(st,at)~D[0.5(Q1(st,at) - r(st,at) - γ(𝔼st+1~p[V(st+1)]))^2]
-
-        if qf1_loss > 1000000 or qf2_loss > 1000000:
-            print(f"QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}")
-            print(next_q_value)
 
         pi, log_pi = self.policy.sample(state_batch)
 

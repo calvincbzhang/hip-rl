@@ -136,7 +136,7 @@ class SAC(object):
 
         for epoch in range(epochs):
 
-            state = torch.FloatTensor(init_states)
+            state = torch.FloatTensor(init_states).to(device)
             
             state_batch = []
             action_batch = []

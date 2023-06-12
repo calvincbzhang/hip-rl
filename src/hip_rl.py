@@ -100,8 +100,8 @@ class HIPRL:
                 self.train_models()
 
                 # save models
-                torch.save(self.reward_model.state_dict(), "models/reward_model_" + str(self.env_name) + "_")
-                torch.save(self.base_model.state_dict(), "models/base_model_" + str(self.env_name) + "_")
+                torch.save(self.reward_model.state_dict(), "models/reward_model_" + str(self.env_name) + ".pt")
+                torch.save(self.base_model.state_dict(), "models/base_model_" + str(self.env_name) + ".pt")
 
     def execute_policy(self, random=False):
 

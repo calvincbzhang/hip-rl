@@ -8,6 +8,8 @@ from transition_model import EnsembleTransitionModel
 from hallucinated_model import HallucinatedModel
 import wandb
 
+import cv2
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
@@ -110,12 +112,12 @@ class HIPRL:
         # cumulative transition deviation
         cum_transition_deviation = 0
 
+        frames = []
+
         # execute policy
         for step in range(self.steps):
 
-            # save image of render
-            img = self.env.render()
-            wandb.log({"render": wandb.Image(img)})
+            frames.append(self.env.render())
 
             # get action from policy
             # epsilon greedy
@@ -147,7 +149,19 @@ class HIPRL:
         logging.info(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
         wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps})
 
+        # make video
+        self.make_video(frames)
+
         return trajectory, cum_reward
+    
+    def make_video(self, frames):
+        height, width, layers = frames[0].shape
+        size = (width, height)
+        # make mp4 video
+        out = cv2.VideoWriter('video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 15, size)
+        for i in range(len(frames)):
+            out.write(frames[i])
+        out.release()
     
     def train_models(self):
         

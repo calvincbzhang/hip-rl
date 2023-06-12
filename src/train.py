@@ -65,7 +65,6 @@ if __name__ == "__main__":
     # env = HallucinationWrapper(env)
     env = ClipReward(env, -1000, 1000)
     env = ClipObervation(env, -1000, 1000)
-    env = gym.wrappers.RecordVideo(env, f"videos/{config['env_name']}.mp4", video_length=100)
 
     # initialize agent
     agent = HIPRL(env, config)

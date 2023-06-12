@@ -10,6 +10,7 @@ from hallucination_wrapper import HallucinationWrapper
 
 import logging
 import datetime
+import os
 
 # ignore warnings
 import warnings
@@ -61,7 +62,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # set up environment
-    env = gym.make(config['env_name'], render_mode="rgb_array")
+    env = gym.make(config['env_name'])
     # env = HallucinationWrapper(env)
     env = ClipReward(env, -1000, 1000)
     env = ClipObervation(env, -1000, 1000)

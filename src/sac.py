@@ -240,3 +240,9 @@ class SAC(object):
                 target_param.data.copy_(target_param.data * (1.0 - self.tau) + param.data * self.tau)
 
         return qf1_loss.item(), qf2_loss.item(), policy_loss.item()
+    
+
+    def save_model(self, path):
+        torch.save(self.critic.state_dict(), path + "critic.pt")
+        torch.save(self.critic_target.state_dict(), path + "critic_target.pt")
+        torch.save(self.policy.state_dict(), path + "policy.pt")

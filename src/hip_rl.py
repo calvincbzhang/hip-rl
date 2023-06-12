@@ -8,8 +8,6 @@ from transition_model import EnsembleTransitionModel
 from hallucinated_model import HallucinatedModel
 import wandb
 
-import cv2
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
@@ -20,6 +18,7 @@ class HIPRL:
         self.state_dim = env.observation_space.shape[0]
         self.action_dim = env.action_space.shape[0]
 
+        self.env_name = config['env_name']
         self.episodes = config['episodes']
         self.steps = config['steps']
 
@@ -64,6 +63,12 @@ class HIPRL:
             # execute policy
             trajectory, cum_reward = self.execute_policy(random=random)
 
+            # if cum_reward is more then the last cum_reward, save policy model
+            if cum_reward > self.R[-1]:
+                self.policy.save_model("models/best_policy_" + str(self.env_name) + "_")
+
+            self.policy.save_model("models/last_policy_" + str(self.env_name) + "_")
+
             print(f"cum_reward: {cum_reward}")
             logging.info(f"cum_reward: {cum_reward}")
             wandb.log({"cum_reward": cum_reward})
@@ -94,6 +99,10 @@ class HIPRL:
             if episode + 1 >= 5:
                 self.train_models()
 
+                # save models
+                torch.save(self.reward_model.state_dict(), "models/reward_model_" + str(self.env_name) + "_")
+                torch.save(self.base_model.state_dict(), "models/base_model_" + str(self.env_name) + "_")
+
     def execute_policy(self, random=False):
 
         print("Executing policy...")
@@ -112,12 +121,8 @@ class HIPRL:
         # cumulative transition deviation
         cum_transition_deviation = 0
 
-        frames = []
-
         # execute policy
         for step in range(self.steps):
-
-            frames.append(self.env.render())
 
             # get action from policy
             # epsilon greedy
@@ -149,19 +154,7 @@ class HIPRL:
         logging.info(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
         wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps})
 
-        # make video
-        self.make_video(frames)
-
         return trajectory, cum_reward
-    
-    def make_video(self, frames):
-        height, width, layers = frames[0].shape
-        size = (width, height)
-        # make mp4 video
-        out = cv2.VideoWriter('video.mp4', cv2.VideoWriter_fourcc(*'mp4v'), 15, size)
-        for i in range(len(frames)):
-            out.write(frames[i])
-        out.release()
     
     def train_models(self):
         
@@ -180,4 +173,4 @@ class HIPRL:
         # train policy
         print("Training policy...")
         logging.info("Training policy...")
-        self.policy.train(self.hallucinated_model, self.reward_model, self.init_states)
+        self.policy.train(self.hallucinated_model, self.reward_model, self.init_states, self.steps)

@@ -55,7 +55,7 @@ class HIPRL:
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
             
             # train policy
-            if episode > 100:
+            if episode > 6:
                 random = False
                 self.train_policy()
 
@@ -89,7 +89,7 @@ class HIPRL:
             self.P.append([trajectory, trajectory_old, preference])
 
             # train models
-            if episode > 99:
+            if episode > 5:
                 self.train_models()
 
     def execute_policy(self, random=False):

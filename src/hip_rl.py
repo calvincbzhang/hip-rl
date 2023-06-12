@@ -3,7 +3,6 @@ import torch
 import logging
 
 from sac import SAC
-from mpc import MPCPolicy
 from reward_model import RewardModel
 from transition_model import EnsembleTransitionModel
 from hallucinated_model import HallucinatedModel
@@ -24,9 +23,10 @@ class HIPRL:
 
         self.reward_model = RewardModel(self.state_dim, self.action_dim).to(device)
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
-        # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        self.policy = SAC(self.state_dim, self.action_dim, env.action_space)
+        self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
+
+        self.policy = SAC(self.state_dim, self.action_dim, env.action_space, hallucinated=True)
         self.policy.to(device)
 
         # trajectories, preferences and rewards
@@ -55,7 +55,7 @@ class HIPRL:
             logging.info(f"======== Episode {episode+1}/{self.episodes} ========")
             
             # train policy
-            if episode > 6:
+            if episode + 1 >= 6:
                 random = False
                 self.train_policy()
 
@@ -89,7 +89,7 @@ class HIPRL:
             self.P.append([trajectory, trajectory_old, preference])
 
             # train models
-            if episode > 5:
+            if episode + 1 >= 5:
                 self.train_models()
 
     def execute_policy(self, random=False):
@@ -113,6 +113,10 @@ class HIPRL:
         # execute policy
         for step in range(self.steps):
 
+            # save image of render
+            img = self.env.render()
+            wandb.log({"render": wandb.Image(img)})
+
             # get action from policy
             # epsilon greedy
             if random or np.random.uniform() < epsilon:
@@ -120,7 +124,7 @@ class HIPRL:
             else:
                 action = self.policy.select_action_deterministic(torch.FloatTensor(state).to(device))
                 
-            action = action.cpu().detach().numpy()
+            action = action.cpu().detach().numpy()[:self.action_dim]
 
             next_state, reward, _, _, _ = self.env.step(action)
 
@@ -162,4 +166,4 @@ class HIPRL:
         # train policy
         print("Training policy...")
         logging.info("Training policy...")
-        self.policy.train(self.base_model, self.reward_model, self.init_states)
+        self.policy.train(self.hallucinated_model, self.reward_model, self.init_states)

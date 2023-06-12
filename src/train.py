@@ -61,10 +61,11 @@ if __name__ == "__main__":
     logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # set up environment
-    env = gym.make(config['env_name'])
+    env = gym.make(config['env_name'], render_mode="rgb_array")
     # env = HallucinationWrapper(env)
     env = ClipReward(env, -1000, 1000)
     env = ClipObervation(env, -1000, 1000)
+    env = gym.wrappers.RecordVideo(env, f"videos/{config['env_name']}.mp4", video_length=100)
 
     # initialize agent
     agent = HIPRL(env, config)

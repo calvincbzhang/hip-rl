@@ -96,4 +96,4 @@ class RewardModel(nn.Module):
                     print(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
                     logging.info(f"Epoch {epoch+1}/{epochs * len(P)}, Loss: {loss.item()}")
                 
-                wandb.log({"Preference Loss": loss.item()})
+                # wandb.log({"Preference Loss": loss.item()})

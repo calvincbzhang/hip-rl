@@ -68,6 +68,12 @@ class Policy(nn.Module):
         self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.).to(device)
         self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.).to(device)
 
+        eta_low = torch.FloatTensor([-1] * self.state_dim).to(device)
+        eta_high = torch.FloatTensor([1] * self.state_dim).to(device)
+
+        self.action_scale = torch.cat([self.action_scale, (eta_high - eta_low)/2.])
+        self.action_bias = torch.cat([self.action_bias, (eta_high + eta_low)/2.])
+
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
 
@@ -109,22 +115,30 @@ class Policy(nn.Module):
 
 
 class SAC(object):
-    def __init__(self, state_dim, action_dim, action_space, gamma=0.99, tau=0.05, alpha=0.2, hidden_dim=32, lr=0.0003):
+    def __init__(self, state_dim, action_dim, action_space, hallucinated=False, gamma=0.99, tau=0.05, alpha=0.2, hidden_dim=32, lr=0.0003):
 
         self.gamma = gamma
         self.tau = tau
         self.alpha = alpha
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.hallucinated = hallucinated
 
         self.target_update_interval = 10
 
-        self.critic = QNetwork(state_dim, action_dim, hidden_dim)
-        self.critic_optim = optim.Adam(self.critic.parameters(), lr=lr)
-
-        self.critic_target = QNetwork(state_dim, action_dim, hidden_dim)
+        if hallucinated:
+            self.critic = QNetwork(state_dim, state_dim + action_dim, hidden_dim)
+            self.critic_target = QNetwork(state_dim, state_dim + action_dim, hidden_dim)
+            self.policy = Policy(state_dim, state_dim + action_dim, action_space, hidden_dim)
+            
+        else:
+            self.critic = QNetwork(state_dim, action_dim, hidden_dim)
+            self.critic_target = QNetwork(state_dim, action_dim, hidden_dim)
+            self.policy = Policy(state_dim, action_dim, action_space, hidden_dim)
+        
         for target_param, param in zip(self.critic_target.parameters(), self.critic.parameters()):
-            target_param.data.copy_(param.data)
-
-        self.policy = Policy(state_dim, action_dim, action_space, hidden_dim)
+                target_param.data.copy_(param.data)
+        self.critic_optim = optim.Adam(self.critic.parameters(), lr=lr)
         self.policy_optim = optim.Adam(self.policy.parameters(), lr=lr)
 
     def select_action(self, state):
@@ -155,7 +169,7 @@ class SAC(object):
                     
                 action = self.select_action(state)
                 next_state = dynamics_model.get_next_state(state, action)
-                reward = reward_fn.get_reward(state, action)
+                reward = reward_fn.get_reward(state, action[:, :self.action_dim])
 
                 state_batch.append(state)
                 action_batch.append(action)
@@ -179,9 +193,9 @@ class SAC(object):
                 print(f"Epoch: {epoch+1}/{epochs}, QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}, Policy Loss: {policy_loss}")
                 logging.info(f"Epoch: {epoch+1}/{epochs}, QF1 Loss: {qf1_loss}, QF2 Loss: {qf2_loss}, Policy Loss: {policy_loss}")
 
-            wandb.log({"QF1 Loss": qf1_loss})
-            wandb.log({"QF2 Loss": qf2_loss})
-            wandb.log({"Policy Loss": policy_loss})
+            # wandb.log({"QF1 Loss": qf1_loss})
+            # wandb.log({"QF2 Loss": qf2_loss})
+            # wandb.log({"Policy Loss": policy_loss})
 
 
     def update_parameters(self, memory, updates):

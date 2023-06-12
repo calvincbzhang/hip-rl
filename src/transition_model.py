@@ -106,4 +106,4 @@ class EnsembleTransitionModel(nn.Module):
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
                 logging.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
 
-            wandb.log({"Transition Model Loss": total_loss})
+            # wandb.log({"Transition Model Loss": total_loss})

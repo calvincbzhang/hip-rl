@@ -66,7 +66,7 @@ class HIPRL:
             if episode + 1 >= 6:
                 self.learned_env.close()
                 self.learned_env = gym.make("swimmer-v0", dynamics_model = self.base_model, reward_fn = self.reward_model)
-                self.learned_env.set_current_state(self._learned_env.reset()[0])
+                self.learned_env.set_current_state(self.learned_env.reset()[0])
                 self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
                 self.model.learn(total_timesteps=100000)
 
@@ -169,7 +169,7 @@ class HIPRL:
         # train transition model
         print("Training transition model...")
         logging.info("Training transition model...")
-        self.base_model.train_model(self.T, epochs=1)
+        self.base_model.train_model(self.T)
 
     # def train_policy(self):
             

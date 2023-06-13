@@ -64,8 +64,8 @@ if __name__ == "__main__":
     # set up environment
     env = gym.make(config['env_name'])
     # env = HallucinationWrapper(env)
-    env = ClipReward(env, -1000, 1000)
-    env = ClipObervation(env, -1000, 1000)
+    # env = ClipReward(env, -1000, 1000)
+    # env = ClipObervation(env, -1000, 1000)
 
     # initialize agent
     agent = HIPRL(env, config)

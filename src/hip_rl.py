@@ -17,7 +17,7 @@ from stable_baselines3 import PPO
 register(
     id='src/swimmer-v0',
     entry_point='swimmer:SwimmerEnv',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

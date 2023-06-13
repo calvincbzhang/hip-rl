@@ -166,7 +166,7 @@ class HIPRL:
         # train transition model
         print("Training transition model...")
         logging.info("Training transition model...")
-        self.base_model.train_model(self.T)
+        self.base_model.train_model(self.T, epochs=1)
 
     def train_policy(self):
             

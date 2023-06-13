@@ -25,9 +25,9 @@ class HIPRL:
         self.reward_model = RewardModel(self.state_dim, self.action_dim).to(device)
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
 
-        self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
+        # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        self.policy = SAC(self.state_dim, self.action_dim, env.action_space, hallucinated=True)
+        self.policy = SAC(self.state_dim, self.action_dim, env.action_space, hallucinated=False)
         self.policy.to(device)
 
         # trajectories, preferences and rewards
@@ -173,4 +173,4 @@ class HIPRL:
         # train policy
         print("Training policy...")
         logging.info("Training policy...")
-        self.policy.train(self.hallucinated_model, self.reward_model, self.init_states, self.steps)
+        self.policy.train(self.env, self.base_model, self.reward_model, self.init_states, self.steps)

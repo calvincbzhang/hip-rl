@@ -68,11 +68,11 @@ class Policy(nn.Module):
         self.action_scale = torch.FloatTensor((action_space.high - action_space.low) / 2.).to(device)
         self.action_bias = torch.FloatTensor((action_space.high + action_space.low) / 2.).to(device)
 
-        eta_low = torch.FloatTensor([-1] * self.state_dim).to(device)
-        eta_high = torch.FloatTensor([1] * self.state_dim).to(device)
+        # eta_low = torch.FloatTensor([-1] * self.state_dim).to(device)
+        # eta_high = torch.FloatTensor([1] * self.state_dim).to(device)
 
-        self.action_scale = torch.cat([self.action_scale, (eta_high - eta_low)/2.])
-        self.action_bias = torch.cat([self.action_bias, (eta_high + eta_low)/2.])
+        # self.action_scale = torch.cat([self.action_scale, (eta_high - eta_low)/2.])
+        # self.action_bias = torch.cat([self.action_bias, (eta_high + eta_low)/2.])
 
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
@@ -154,11 +154,13 @@ class SAC(object):
         self.critic_target.to(device)
         self.policy.to(device)
     
-    def train(self, dynamics_model, reward_fn, init_states, horizon=1000, epochs=250, batch_size=256):
+    def train(self, env, dynamics_model, reward_fn, init_states, horizon=1000, epochs=250, batch_size=256):
 
         for epoch in range(epochs):
 
-            state = torch.FloatTensor(init_states).to(device)
+            # state = torch.FloatTensor(init_states).to(device)
+
+            state, _ = env.reset()
             
             state_batch = []
             action_batch = []
@@ -167,14 +169,16 @@ class SAC(object):
 
             for t in range(horizon):
                     
+                state = torch.FloatTensor(state).to(device)
                 action = self.select_action(state)
-                next_state = dynamics_model.get_next_state(state, action)
-                reward = reward_fn.get_reward(state, action[:, :self.action_dim])
+                # next_state = dynamics_model.get_next_state(state, action)
+                next_state, _, _, _, _ = env.step(action.detach().cpu().numpy())
+                reward = reward_fn.get_reward(state, action)
 
                 state_batch.append(state)
-                action_batch.append(action)
-                reward_batch.append(reward)
-                next_state_batch.append(next_state)
+                action_batch.append(torch.FloatTensor(action))
+                reward_batch.append(torch.FloatTensor(reward))
+                next_state_batch.append(torch.FloatTensor(next_state))
 
                 state = next_state
 

@@ -18,25 +18,25 @@ warnings.filterwarnings("ignore")
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class ClipReward(gym.RewardWrapper):
-    def __init__(self, env, min_reward, max_reward):
-        super().__init__(env)
-        self.min_reward = min_reward
-        self.max_reward = max_reward
-        self.reward_range = (min_reward, max_reward)
+# class ClipReward(gym.RewardWrapper):
+#     def __init__(self, env, min_reward, max_reward):
+#         super().__init__(env)
+#         self.min_reward = min_reward
+#         self.max_reward = max_reward
+#         self.reward_range = (min_reward, max_reward)
     
-    def reward(self, reward):
-        return np.clip(reward, self.min_reward, self.max_reward)
+#     def reward(self, reward):
+#         return np.clip(reward, self.min_reward, self.max_reward)
     
 
-class ClipObervation(gym.ObservationWrapper):
-    def __init__(self, env, min_obs, max_obs):
-        super().__init__(env)
-        self.min_obs = min_obs
-        self.max_obs = max_obs
+# class ClipObervation(gym.ObservationWrapper):
+#     def __init__(self, env, min_obs, max_obs):
+#         super().__init__(env)
+#         self.min_obs = min_obs
+#         self.max_obs = max_obs
 
-    def observation(self, obs):
-        return np.clip(obs, self.min_obs, self.max_obs)
+#     def observation(self, obs):
+#         return np.clip(obs, self.min_obs, self.max_obs)
 
 
 if __name__ == "__main__":

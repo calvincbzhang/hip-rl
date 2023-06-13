@@ -10,21 +10,21 @@ import wandb
 
 import gymnasium as gym
 
-from gymnasium.envs.registration import register
-
 from stable_baselines3 import PPO
 
-register(
-    id='src/swimmer-v0',
-    entry_point='swimmer:SwimmerEnv',
-    max_episode_steps=1000,
-)
+from gymnasium.envs.registration import register
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
 class HIPRL:
     def __init__(self, env, config):
+
+        register(
+           id='swimmer-v0',
+            entry_point='envs.swimmer:SwimmerEnv',
+            max_episode_steps=1000,
+        )
 
         self.env = env
         self.state_dim = env.observation_space.shape[0]
@@ -37,14 +37,10 @@ class HIPRL:
         self.reward_model = RewardModel(self.state_dim, self.action_dim).to(device)
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
 
-        env = gym.make("src/swimmer-v0", reward_fn = self.reward_model)
-
         # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        # self.policy = SAC(self.state_dim, self.action_dim, env.action_space, hallucinated=False)
-        # self.policy.to(device)
-
-        self.model = PPO("MlpPolicy", env, verbose=1)
+        self.learned_env = gym.make("swimmer-v0", dynamics_model=self.base_model, reward_fn=self.reward_model)
+        self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -53,13 +49,8 @@ class HIPRL:
     
     def train(self):
 
-        random = True
-
-        # get a set of initial states of length 100
-        self.init_states = [self.env.reset()[0] for _ in range(100)]
-
-        # execute policy ones to get initial trajectory
-        trajectory, cum_reward = self.execute_policy(random=random)
+        # execute policy onece to get initial trajectory
+        trajectory, cum_reward = self.execute_policy()
 
         # append
         self.T.append(trajectory)
@@ -73,14 +64,14 @@ class HIPRL:
             
             # train policy
             if episode + 1 >= 6:
-                random = False
-                # self.train_policy()
-                env = gym.make("src/swimmer-v0", reward_fn = self.reward_model)
-                self.model = PPO("MlpPolicy", env, verbose=1)
+                self.learned_env.close()
+                self.learned_env = gym.make("swimmer-v0", dynamics_model = self.base_model, reward_fn = self.reward_model)
+                self.learned_env.set_current_state(self._learned_env.reset()[0])
+                self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
                 self.model.learn(total_timesteps=100000)
 
             # execute policy
-            trajectory, cum_reward = self.execute_policy(random=random)
+            trajectory, cum_reward = self.execute_policy()
 
             # if cum_reward is more then the last cum_reward, save policy model
             # if cum_reward > self.R[-1]:
@@ -122,7 +113,7 @@ class HIPRL:
                 torch.save(self.reward_model.state_dict(), "models/reward_model_" + str(self.env_name) + ".pt")
                 torch.save(self.base_model.state_dict(), "models/base_model_" + str(self.env_name) + ".pt")
 
-    def execute_policy(self, random=False):
+    def execute_policy(self):
 
         print("Executing policy...")
         logging.info("Executing policy...")
@@ -132,7 +123,6 @@ class HIPRL:
 
         # reset environment
         state, _ = self.env.reset()
-        self.initial_state = state
 
         # cumulative reward
         cum_reward = 0
@@ -144,14 +134,6 @@ class HIPRL:
         for step in range(self.steps):
 
             # get action from policy
-            # # epsilon greedy
-            # if random or np.random.uniform() < epsilon:
-            #     action = self.policy.select_action(torch.FloatTensor(state).to(device))
-            # else:
-            #     action = self.policy.select_action_deterministic(torch.FloatTensor(state).to(device))
-                
-            # action = action.cpu().detach().numpy()[:self.action_dim]
-
             action, _ = self.model.predict(state, deterministic=False)
 
             next_state, reward, _, _, _ = self.env.step(action)
@@ -185,13 +167,13 @@ class HIPRL:
         self.reward_model.train_model(self.P)
     
         # train transition model
-        # print("Training transition model...")
-        # logging.info("Training transition model...")
-        # self.base_model.train_model(self.T, epochs=1)
+        print("Training transition model...")
+        logging.info("Training transition model...")
+        self.base_model.train_model(self.T, epochs=1)
 
-    def train_policy(self):
+    # def train_policy(self):
             
-        # train policy
-        print("Training policy...")
-        logging.info("Training policy...")
-        self.policy.train(self.env, self.base_model, self.reward_model, self.init_states, self.steps)
+    #     # train policy
+    #     print("Training policy...")
+    #     logging.info("Training policy...")
+    #     self.policy.train(self.env, self.base_model, self.reward_model, self.init_states, self.steps)

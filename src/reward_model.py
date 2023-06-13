@@ -79,7 +79,7 @@ class RewardModel(nn.Module):
         loss = loss / n_pairs
         return loss
     
-    def train_model(self, P, epochs=2, lr=0.01):
+    def train_model(self, P, epochs=5, lr=0.01):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         if len(P) > 100:
             # use last preference and sample 99 random preferences

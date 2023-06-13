@@ -4,8 +4,8 @@
 from typing import Tuple
 
 import numpy as np
-from gym import Env, Wrapper
-from gym.spaces import Box
+from gymnasium import Env, Wrapper
+from gymnasium.spaces import Box
 
 
 class HallucinationWrapper(Wrapper):

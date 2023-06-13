@@ -8,14 +8,14 @@ packages = [{include = "hip_rl"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
-gym = "^0.26.2"
+mujoco = "^2.3.5"
 torch = "^2.0.1"
-pyyaml = "^6.0"
-numpy = "^1.24.3"
-blitz-bayesian-pytorch = "^0.2.8"
-wandb = "^0.15.4"
-moviepy = "^1.0.3"
 opencv-python = "^4.7.0.72"
+pyyaml = "^6.0"
+gymnasium = "^0.28.1"
+wandb = "^0.15.4"
+stable-baselines3 = ">=2.0.0a1"
+imageio = "^2.31.1"
 
 
 [build-system]

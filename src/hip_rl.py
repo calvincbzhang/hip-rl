@@ -76,8 +76,8 @@ class HIPRL:
                 random = False
                 # self.train_policy()
                 env = gym.make("src/swimmer-v0", reward_fn = self.reward_model)
-                self.model = PPO("MlpPolicy", env, verbose=0)
-                self.model.learn(total_timesteps=10000)
+                self.model = PPO("MlpPolicy", env, verbose=1)
+                self.model.learn(total_timesteps=100000)
 
             # execute policy
             trajectory, cum_reward = self.execute_policy(random=random)

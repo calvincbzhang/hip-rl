@@ -70,9 +70,12 @@ class HIPRL:
             if episode + 1 >= 6:
                 self.learned_env.close()
                 self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
-                self.learned_env.set_current_state(self.learned_env.reset()[0])
                 self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
-                self.model.learn(total_timesteps=100000)
+                for i in range(10):
+                    # sample a state from the trajectories
+                    traj, s = np.random.randint(len(self.T)), np.random.randint((len(self.T[0]) // 4)) * 2
+                    self.learned_env.set_current_state(self.T[traj][s])
+                    self.model.learn(total_timesteps=10000)
 
             # execute policy
             trajectory, cum_reward = self.execute_policy()

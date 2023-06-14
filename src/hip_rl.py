@@ -11,6 +11,7 @@ import wandb
 import gymnasium as gym
 
 from stable_baselines3 import PPO
+from stable_baselines3.common.evaluation import evaluate_policy
 
 from gymnasium.envs.registration import register
 
@@ -36,9 +37,9 @@ class HIPRL:
         self.episodes = config['episodes']
         self.steps = config['steps']
 
-        self.reward_model = RewardModel(self.state_dim, self.action_dim).to(device)
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
         self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
+        self.reward_model = RewardModel(self.state_dim, self.action_dim + self.state_dim).to(device)
 
         self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
         self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
@@ -148,7 +149,7 @@ class HIPRL:
 
             # append to trajectory
             trajectory.append(state)
-            trajectory.append(action[:self.action_dim])
+            trajectory.append(action)
 
             # update state
             state = next_state

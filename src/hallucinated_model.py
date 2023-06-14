@@ -38,6 +38,9 @@ class HallucinatedModel(nn.Module):
 
         return mean + self.beta * (optimism_vars * torch.sqrt(stddev))
     
+    def get_next_states(self, state, action):
+        return self.forward(state, action)
+    
     def get_next_state(self, state, action):
         return self.forward_single(state, action)
     
@@ -54,4 +57,27 @@ class HallucinatedModel(nn.Module):
         return mean + self.beta * (optimism_var * torch.sqrt(stddev))
     
     def train_model(self, T, epochs=1500, lr=0.001):
-        self.base_model.train_model(T, epochs, lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        if len(T) > 30:
+            # use last trajectory and 29 random ones
+            T = [T[-1]] + random.sample(T[:-1], 29)
+        for epoch in range(epochs):
+
+            total_loss = 0.0
+
+            for tau in T:
+                states, actions = torch.tensor(tau[::2], dtype=torch.float32).to(device), torch.tensor(tau[1::2], dtype=torch.float32).to(device)
+                next_states = self.get_next_states(states[:-1], actions[:-1])
+                loss = F.mse_loss(next_states, states[1:])
+                total_loss += loss.item()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+            total_loss /= len(T)
+
+            if (epoch+1) % 100 == 0:
+                print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
+                logging.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
+
+            # wandb.log({"Transition Model Loss": total_loss})

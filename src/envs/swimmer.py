@@ -13,7 +13,7 @@ class SwimmerEnv(gym.envs.mujoco.swimmer_v4.SwimmerEnv):
     def step(self, action):
 
         next_state = self.dynamics_model.get_next_state(self.state, action).detach().cpu().numpy()
-        reward = self.reward_fn.get_reward(self.state, action[: self.reward_fn.action_dim]).detach().cpu().numpy()
+        reward = self.reward_fn.get_reward(self.state, action).detach().cpu().numpy()
 
         self.state = next_state
 

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import random
 import logging
 
 from sac import SAC
@@ -12,11 +13,33 @@ import gymnasium as gym
 
 from stable_baselines3 import PPO
 
+# Set a fixed seed
+seed = 42 
+
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 from gymnasium.envs.registration import register
 
 register(
     id='LearnedSwimmer-v4',
     entry_point='envs.swimmer:SwimmerEnv',
+    max_episode_steps=300,
+)
+
+register(
+    id='LearnedMountainCarContinuous-v0',
+    entry_point='envs.mountain_car:MountainCar',
+    max_episode_steps=300,
+)
+
+register(
+    id='LearnedInvertedPendulum-v4',
+    entry_point='envs.inverted_pendulum:InvertedPendulum',
     max_episode_steps=300,
 )
 
@@ -70,11 +93,14 @@ class HIPRL:
                 self.learned_env.close()
                 self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
                 self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
-                for i in range(10):
-                    # sample a state from the trajectories
-                    traj, s = np.random.randint(len(self.T)), np.random.randint((len(self.T[0]) // 4)) * 2
-                    self.learned_env.set_current_state(self.T[traj][s])
-                    self.model.learn(total_timesteps=10000)
+                # for i in range(10):
+                #     # sample a state from the trajectories
+                #     traj= np.random.randint(len(self.T))
+                #     s = np.random.randint((len(self.T[traj]) // 4)) * 2
+                #     self.learned_env.set_current_state(self.T[traj][s])
+                #     self.model.learn(total_timesteps=10000)
+                self.learned_env.set_current_state(self.learned_env.reset()[0])
+                self.model.learn(total_timesteps=25000)
 
                 # evaluate policy
                 avg_reward, stddev_reward = self.evaluate_policy(eval_episodes=10)
@@ -145,7 +171,7 @@ class HIPRL:
             # get action from policy
             action, _ = self.model.predict(state, deterministic=False)
 
-            next_state, reward, _, _, _ = self.env.step(action[:self.action_dim])
+            next_state, reward, terminated, truncated, _ = self.env.step(action[:self.action_dim])
 
             # compute step transition error
             predicted_next_state = (self.hallucinated_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).cpu().detach().numpy()
@@ -161,6 +187,9 @@ class HIPRL:
 
             # update cumulative reward
             cum_reward += reward
+
+            if terminated or truncated:
+                break
 
         print(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
         logging.info(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
@@ -203,13 +232,16 @@ class HIPRL:
                     # get action from policy
                     action, _ = self.model.predict(state, deterministic=True)
                     
-                    next_state, reward, _, _, _ = self.env.step(action[:self.action_dim])
+                    next_state, reward, terminated, truncated, _ = self.env.step(action[:self.action_dim])
                     
                     # update state
                     state = next_state
                     
                     # update cumulative reward
                     cum_reward += reward
+
+                    if terminated or truncated:
+                        break 
                 
                 # append reward
                 rewards.append(cum_reward)

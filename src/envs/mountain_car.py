@@ -1,9 +1,9 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from gymnasium.envs.mujoco.swimmer_v4 import SwimmerEnv
+from gymnasium.envs.classic_control.continuous_mountain_car import Continuous_MountainCarEnv
 
-class SwimmerEnv(SwimmerEnv):
+class MountainCar(Continuous_MountainCarEnv):
     def __init__(self, dynamics_model, reward_fn, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reward_fn = reward_fn
@@ -23,7 +23,14 @@ class SwimmerEnv(SwimmerEnv):
         if self.render_mode == "human":
             self.render()
 
-        return next_state, reward, False, False, info
+        position = self.state[0]
+        velocity = self.state[1]
+
+        terminated = bool(
+            position >= self.goal_position and velocity >= self.goal_velocity
+        )
+
+        return next_state, reward, terminated, False, info
     
     def set_current_state(self, state):
         self.state = state

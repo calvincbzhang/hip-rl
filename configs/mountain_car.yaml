@@ -1,0 +1,4 @@
+env_name: MountainCarContinuous-v0
+
+episodes: 1000
+steps: 1000

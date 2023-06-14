@@ -7,11 +7,21 @@ import torch.nn.functional as F
 import logging
 import wandb
 
+# Set a fixed seed
+seed = 42 
+
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class TransitionModel(nn.Module):
-    def __init__(self, state_dim, action_dim, hidden_dim=32):
+    def __init__(self, state_dim, action_dim, hidden_dim=128):
         super(TransitionModel, self).__init__()
 
         self.state_dim = state_dim
@@ -22,6 +32,12 @@ class TransitionModel(nn.Module):
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.mean_output = nn.Linear(hidden_dim, state_dim)
         self.stddev_output = nn.Linear(hidden_dim, state_dim)
+
+        # xavier initialization
+        nn.init.xavier_uniform_(self.linear1.weight)
+        nn.init.xavier_uniform_(self.linear2.weight)
+        nn.init.xavier_uniform_(self.mean_output.weight)
+        nn.init.xavier_uniform_(self.stddev_output.weight)
 
     def forward(self, state, action):
         state = torch.tensor(state, dtype=torch.float32)

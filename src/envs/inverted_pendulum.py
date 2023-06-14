@@ -1,15 +1,15 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-from gymnasium.envs.mujoco.swimmer_v4 import SwimmerEnv
+from gymnasium.envs.mujoco.inverted_pendulum_v4 import InvertedPendulumEnv
 
-class SwimmerEnv(SwimmerEnv):
+class InvertedPendulum(InvertedPendulumEnv):
     def __init__(self, dynamics_model, reward_fn, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.reward_fn = reward_fn
         self.dynamics_model = dynamics_model
 
-        self.action_space = spaces.Box(low=-1, high=1, shape=(self.dynamics_model.action_dim,), dtype=np.float32)
+        self.action_space = spaces.Box(low=-3, high=3, shape=(self.dynamics_model.action_dim,), dtype=np.float32)
 
     def step(self, action):
 
@@ -23,7 +23,9 @@ class SwimmerEnv(SwimmerEnv):
         if self.render_mode == "human":
             self.render()
 
-        return next_state, reward, False, False, info
+        terminated = bool(not np.isfinite(self.state).all() or (np.abs(self.state[1]) > 0.2))
+
+        return next_state, reward, terminated, False, info
     
     def set_current_state(self, state):
         self.state = state

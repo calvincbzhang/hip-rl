@@ -32,6 +32,12 @@ register(
 )
 
 register(
+    id='LearnedHalfCheetah-v4',
+    entry_point='envs.half_cheetah:HalfCheetahEnv',
+    max_episode_steps=300,
+)
+
+register(
     id='LearnedMountainCarContinuous-v0',
     entry_point='envs.mountain_car:MountainCar',
     max_episode_steps=300,
@@ -100,7 +106,7 @@ class HIPRL:
                 #     self.learned_env.set_current_state(self.T[traj][s])
                 #     self.model.learn(total_timesteps=10000)
                 self.learned_env.set_current_state(self.learned_env.reset()[0])
-                self.model.learn(total_timesteps=25000)
+                self.model.learn(total_timesteps=100000)
 
                 # evaluate policy
                 avg_reward, stddev_reward = self.evaluate_policy(eval_episodes=10)

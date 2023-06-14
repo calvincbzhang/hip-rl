@@ -11,7 +11,6 @@ import wandb
 import gymnasium as gym
 
 from stable_baselines3 import PPO
-from stable_baselines3.common.evaluation import evaluate_policy
 
 from gymnasium.envs.registration import register
 
@@ -77,14 +76,17 @@ class HIPRL:
                     self.learned_env.set_current_state(self.T[traj][s])
                     self.model.learn(total_timesteps=10000)
 
+                # evaluate policy
+                avg_reward, stddev_reward = self.evaluate_policy(eval_episodes=10)
+
+                if avg_reward > self.best_reward:
+                    self.best_reward = avg_reward
+                    self.model.save(f"{self.foldername}/best_model_{str(self.env_name)}.pt")
+
+                self.model.save(f"{self.foldername}/last_model_{str(self.env_name)}.pt")
+
             # execute policy
             trajectory, cum_reward = self.execute_policy()
-
-            if cum_reward > self.best_reward:
-                self.best_reward = cum_reward
-                self.model.save(f"{self.foldername}/best_model_{str(self.env_name)}.pt")
-
-            self.model.save(f"{self.foldername}/last_model_{str(self.env_name)}.pt")
 
             print(f"cum_reward: {cum_reward}")
             logging.info(f"cum_reward: {cum_reward}")
@@ -177,6 +179,50 @@ class HIPRL:
         print("Training transition model...")
         logging.info("Training transition model...")
         self.hallucinated_model.train_model(self.T)
+
+    def evaluate_policy(self, eval_episodes=10):
+            
+            print("Evaluating policy...")
+            logging.info("Evaluating policy...")
+            
+            # initialize array of rewards
+            rewards = []
+            
+            # execute policy
+            for episode in range(eval_episodes):
+                
+                # reset environment
+                state, _ = self.env.reset()
+                
+                # cumulative reward
+                cum_reward = 0
+                
+                # execute policy
+                for step in range(self.steps):
+                    
+                    # get action from policy
+                    action, _ = self.model.predict(state, deterministic=True)
+                    
+                    next_state, reward, _, _, _ = self.env.step(action[:self.action_dim])
+                    
+                    # update state
+                    state = next_state
+                    
+                    # update cumulative reward
+                    cum_reward += reward
+                
+                # append reward
+                rewards.append(cum_reward)
+            
+            # compute average and standard deviation of rewards
+            avg_reward = np.mean(rewards)
+            stddev_reward = np.std(rewards)
+            
+            print(f"avg_reward: {avg_reward}")
+            logging.info(f"avg_reward: {avg_reward}")
+            wandb.log({"avg_reward_evaluation": avg_reward})
+
+            return avg_reward, stddev_reward
 
     # def train_policy(self):
             

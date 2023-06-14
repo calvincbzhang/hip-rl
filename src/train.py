@@ -57,7 +57,9 @@ if __name__ == "__main__":
     timestap = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    filename = "logs/" + config['env_name'] + "_" + timestamp + ".txt"
+    foldername = "logs/" + config['env_name'] + "_" + timestamp
+    os.mkdir(foldername)
+    filename = foldername + "/log.txt"
 
     logging.basicConfig(filename=filename, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -68,7 +70,7 @@ if __name__ == "__main__":
     # env = ClipObervation(env, -1000, 1000)
 
     # initialize agent
-    agent = HIPRL(env, config)
+    agent = HIPRL(env, config, foldername)
 
     # train agent
     agent.train()

@@ -14,17 +14,19 @@ from stable_baselines3 import PPO
 
 from gymnasium.envs.registration import register
 
+register(
+    id='LearnedSwimmer-v4',
+    entry_point='envs.swimmer:SwimmerEnv',
+    max_episode_steps=300,
+)
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
 class HIPRL:
-    def __init__(self, env, config):
+    def __init__(self, env, config, foldername):
 
-        register(
-           id='swimmer-v0',
-            entry_point='envs.swimmer:SwimmerEnv',
-            max_episode_steps=300,
-        )
+        self.foldername = foldername
 
         self.env = env
         self.state_dim = env.observation_space.shape[0]
@@ -36,10 +38,9 @@ class HIPRL:
 
         self.reward_model = RewardModel(self.state_dim, self.action_dim).to(device)
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
+        self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
 
-        # self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
-
-        self.learned_env = gym.make("swimmer-v0", dynamics_model=self.base_model, reward_fn=self.reward_model)
+        self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
         self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
 
         # trajectories, preferences and rewards
@@ -51,6 +52,8 @@ class HIPRL:
 
         # execute policy onece to get initial trajectory
         trajectory, cum_reward = self.execute_policy()
+
+        self.best_reward = cum_reward
 
         # append
         self.T.append(trajectory)
@@ -65,7 +68,7 @@ class HIPRL:
             # train policy
             if episode + 1 >= 6:
                 self.learned_env.close()
-                self.learned_env = gym.make("swimmer-v0", dynamics_model = self.base_model, reward_fn = self.reward_model)
+                self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
                 self.learned_env.set_current_state(self.learned_env.reset()[0])
                 self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
                 self.model.learn(total_timesteps=25000)
@@ -73,11 +76,11 @@ class HIPRL:
             # execute policy
             trajectory, cum_reward = self.execute_policy()
 
-            # if cum_reward is more then the last cum_reward, save policy model
-            # if cum_reward > self.R[-1]:
-            #     self.policy.save_model("models/best_policy_" + str(self.env_name) + "_")
+            if cum_reward > self.best_reward:
+                self.best_reward = cum_reward
+                self.model.save(f"{self.foldername}/best_model_{str(self.env_name)}.pt")
 
-            # self.policy.save_model("models/last_policy_" + str(self.env_name) + "_")
+            self.model.save(f"{self.foldername}/last_model_{str(self.env_name)}.pt")
 
             print(f"cum_reward: {cum_reward}")
             logging.info(f"cum_reward: {cum_reward}")
@@ -110,8 +113,8 @@ class HIPRL:
                 self.train_models()
 
                 # save models
-                torch.save(self.reward_model.state_dict(), "models/reward_model_" + str(self.env_name) + ".pt")
-                torch.save(self.base_model.state_dict(), "models/base_model_" + str(self.env_name) + ".pt")
+                torch.save(self.reward_model.state_dict(), self.foldername + "/reward_model_" + str(self.env_name) + ".pt")
+                torch.save(self.hallucinated_model.state_dict(), self.foldername + "/hallucinated_model_" + str(self.env_name) + ".pt")
 
     def execute_policy(self):
 
@@ -136,16 +139,16 @@ class HIPRL:
             # get action from policy
             action, _ = self.model.predict(state, deterministic=False)
 
-            next_state, reward, _, _, _ = self.env.step(action)
+            next_state, reward, _, _, _ = self.env.step(action[:self.action_dim])
 
             # compute step transition error
-            predicted_next_state = (self.base_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).cpu().detach().numpy()
+            predicted_next_state = (self.hallucinated_model.get_next_state(torch.FloatTensor(state).to(device), torch.FloatTensor(action).to(device))).cpu().detach().numpy()
             transition_deviation = np.sqrt(np.sum((next_state - predicted_next_state)**2))
             cum_transition_deviation += transition_deviation
 
             # append to trajectory
             trajectory.append(state)
-            trajectory.append(action)
+            trajectory.append(action[:self.action_dim])
 
             # update state
             state = next_state
@@ -169,7 +172,7 @@ class HIPRL:
         # train transition model
         print("Training transition model...")
         logging.info("Training transition model...")
-        self.base_model.train_model(self.T)
+        self.hallucinated_model.train_model(self.T, epochs=1)
 
     # def train_policy(self):
             

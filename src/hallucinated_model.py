@@ -39,16 +39,19 @@ class HallucinatedModel(nn.Module):
         return mean + self.beta * (optimism_vars * torch.sqrt(stddev))
     
     def get_next_state(self, state, action):
-        return self.forward(state, action)
+        return self.forward_single(state, action)
     
     def get_next_state_separate(self, state, action):
         return self.forward_seprate(state, action)
     
     def forward_single(self, state, action):
         control_action = action[:self.original_action_dim]
-        optimism_var = action[self.original_action_dim:]
+        optimism_var = torch.tensor(action[self.original_action_dim:])
         optimism_var = torch.clamp(optimism_var, -1.0, 1.0)
 
         mean, stddev = self.base_model.forward(state, control_action)
 
         return mean + self.beta * (optimism_var * torch.sqrt(stddev))
+    
+    def train_model(self, T, epochs=1500, lr=0.001):
+        self.base_model.train_model(T, epochs, lr)

@@ -172,7 +172,7 @@ class HIPRL:
         # train transition model
         print("Training transition model...")
         logging.info("Training transition model...")
-        self.hallucinated_model.train_model(self.T, epochs=1)
+        self.hallucinated_model.train_model(self.T)
 
     # def train_policy(self):
             

@@ -23,7 +23,7 @@ class HIPRL:
         register(
            id='swimmer-v0',
             entry_point='envs.swimmer:SwimmerEnv',
-            max_episode_steps=1000,
+            max_episode_steps=300,
         )
 
         self.env = env
@@ -68,7 +68,7 @@ class HIPRL:
                 self.learned_env = gym.make("swimmer-v0", dynamics_model = self.base_model, reward_fn = self.reward_model)
                 self.learned_env.set_current_state(self.learned_env.reset()[0])
                 self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
-                self.model.learn(total_timesteps=100000)
+                self.model.learn(total_timesteps=25000)
 
             # execute policy
             trajectory, cum_reward = self.execute_policy()

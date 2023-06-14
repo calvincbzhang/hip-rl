@@ -82,7 +82,7 @@ class EnsembleTransitionModel(nn.Module):
             next_states.append(next_state)
         return next_states
     
-    def train_model(self, T, epochs=1000, lr=0.001):
+    def train_model(self, T, epochs=1500, lr=0.001):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         if len(T) > 30:
             # use last trajectory and 29 random ones

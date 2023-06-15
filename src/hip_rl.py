@@ -11,6 +11,7 @@ import wandb
 
 import gymnasium as gym
 
+import stable_baselines3 as sb3
 from stable_baselines3 import PPO, TD3
 from wandb.integration.sb3 import WandbCallback
 
@@ -126,6 +127,13 @@ class HIPRL:
                         self.learned_env,
                         verbose=1,
                         learning_starts=self.config['learning_starts'],
+                    )
+                elif self.env_name == "MountainCarContinuous-v0":
+                    self.model = TD3(
+                        "MlpPolicy",
+                        self.learned_env,
+                        verbose=1,
+                        action_noise=sb3.common.noise.OrnsteinUhlenbeckActionNoise(mean=np.zeros(self.action_dim), sigma=0.5 * np.ones(self.action_dim)),
                     )
                 else:
                     self.model = PPO(

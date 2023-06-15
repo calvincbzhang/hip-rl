@@ -28,25 +28,25 @@ from gymnasium.envs.registration import register
 register(
     id='LearnedSwimmer-v4',
     entry_point='envs.swimmer:SwimmerEnv',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 register(
     id='LearnedHalfCheetah-v4',
     entry_point='envs.half_cheetah:HalfCheetahEnv',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 register(
     id='LearnedMountainCarContinuous-v0',
     entry_point='envs.mountain_car:MountainCar',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 register(
     id='LearnedInvertedPendulum-v4',
     entry_point='envs.inverted_pendulum:InvertedPendulum',
-    max_episode_steps=300,
+    max_episode_steps=1000,
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -109,7 +109,19 @@ class HIPRL:
                 self.model.learn(total_timesteps=100000)
 
                 # evaluate policy
-                avg_reward, stddev_reward = self.evaluate_policy(eval_episodes=10)
+                rewards = self.evaluate_policy(eval_episodes=10)
+
+                # compute average and standard deviation of rewards
+                avg_reward = np.mean(rewards)
+                stddev_reward = np.std(rewards)
+                
+                print(f"avg_reward: {avg_reward}")
+                logging.info(f"avg_reward: {avg_reward}")
+                wandb.log({"avg_reward_evaluation": avg_reward}, commit=False)
+
+                print(f"stddev_reward: {stddev_reward}")
+                logging.info(f"stddev_reward: {stddev_reward}")
+                wandb.log({"stddev_reward_evaluation": stddev_reward}, commit=False)
 
                 if avg_reward > self.best_reward:
                     self.best_reward = avg_reward
@@ -122,7 +134,8 @@ class HIPRL:
 
             print(f"cum_reward: {cum_reward}")
             logging.info(f"cum_reward: {cum_reward}")
-            wandb.log({"cum_reward": cum_reward})
+            if episode + 1 >= 6:
+                wandb.log({"cum_reward": cum_reward}, commit=False)
 
             # sample trajectory from T and its corresponding reward
             index = np.random.randint(len(self.T))
@@ -137,11 +150,12 @@ class HIPRL:
             preference = (cum_reward - cum_reward_old) #/ (self.steps)
 
             # compute episode preference error
-            predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)
-            preference_deviation = np.absolute(preference - predicted_preference)
-            print(f"preference_deviation: {preference_deviation}")
-            logging.info(f"preference_deviation: {preference_deviation}")
-            wandb.log({"preference_deviation": preference_deviation})
+            if episode + 1 >= 6:
+                predicted_preference = self.reward_model.get_preference(trajectory, trajectory_old)
+                preference_deviation = np.absolute(preference - predicted_preference)
+                print(f"preference_deviation: {preference_deviation}")
+                logging.info(f"preference_deviation: {preference_deviation}")
+                wandb.log({"preference_deviation": preference_deviation})
 
             # append preference [trajectory, trajectory_old, preference]
             self.P.append([trajectory, trajectory_old, preference])
@@ -199,7 +213,7 @@ class HIPRL:
 
         print(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
         logging.info(f"cum_transition_deviation: {cum_transition_deviation / self.steps}")
-        wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps})
+        wandb.log({"avg_transition_deviation": cum_transition_deviation / self.steps}, commit=False)
 
         return trajectory, cum_reward
     
@@ -251,16 +265,8 @@ class HIPRL:
                 
                 # append reward
                 rewards.append(cum_reward)
-            
-            # compute average and standard deviation of rewards
-            avg_reward = np.mean(rewards)
-            stddev_reward = np.std(rewards)
-            
-            print(f"avg_reward: {avg_reward}")
-            logging.info(f"avg_reward: {avg_reward}")
-            wandb.log({"avg_reward_evaluation": avg_reward})
 
-            return avg_reward, stddev_reward
+            return rewards
 
     # def train_policy(self):
             

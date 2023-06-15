@@ -19,7 +19,7 @@ if __name__ == "__main__":
     env_name = config["env_name"]
 
     env = gym.make(env_name, render_mode="human")
-    model = sb3.PPO.load("models/PPO" + env_name )
+    model = sb3.PPO.load("models/" + env_name )
     obs, _ = env.reset()
 
     rewards = []
@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
         for t in range(1000):
 
-            action, _ = model.predict(obs, deterministic=False)
+            action, _ = model.predict(obs, deterministic=True)
             obs, reward, terminated, _, info = env.step(action[:env.action_space.shape[0]])
             cumulative_reward += reward
             env.render()

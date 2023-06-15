@@ -106,7 +106,7 @@ class HIPRL:
                 #     self.learned_env.set_current_state(self.T[traj][s])
                 #     self.model.learn(total_timesteps=10000)
                 self.learned_env.set_current_state(self.learned_env.reset()[0])
-                self.model.learn(total_timesteps=25000)
+                self.model.learn(total_timesteps=25000, progress_bar=True)
 
                 # evaluate policy
                 rewards = self.evaluate_policy(eval_episodes=10)
@@ -125,9 +125,9 @@ class HIPRL:
 
                 if avg_reward > self.best_reward:
                     self.best_reward = avg_reward
-                    self.model.save(f"{self.foldername}/best_model_{str(self.env_name)}.pt")
+                    self.model.save(f"{self.foldername}/best_model_{str(self.env_name)}")
 
-                self.model.save(f"{self.foldername}/last_model_{str(self.env_name)}.pt")
+                self.model.save(f"{self.foldername}/last_model_{str(self.env_name)}")
 
             # execute policy
             trajectory, cum_reward = self.execute_policy()

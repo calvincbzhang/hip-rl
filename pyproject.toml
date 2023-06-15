@@ -16,6 +16,8 @@ gymnasium = "^0.28.1"
 wandb = "^0.15.4"
 stable-baselines3 = ">=2.0.0a1"
 imageio = "^2.31.1"
+tqdm = "^4.65.0"
+rich = "^13.4.2"
 
 
 [build-system]

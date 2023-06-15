@@ -11,7 +11,7 @@ import wandb
 
 import gymnasium as gym
 
-from stable_baselines3 import SAC
+from stable_baselines3 import PPO, TD3
 from wandb.integration.sb3 import WandbCallback
 
 # Set a fixed seed
@@ -27,27 +27,28 @@ torch.backends.cudnn.benchmark = False
 from gymnasium.envs.registration import register
 
 register(
+    id='LearnedAnt-v4',
+    entry_point='envs.ant:AntEnv',
+)
+
+register(
     id='LearnedSwimmer-v4',
     entry_point='envs.swimmer:SwimmerEnv',
-    max_episode_steps=300,
 )
 
 register(
     id='LearnedHalfCheetah-v4',
     entry_point='envs.half_cheetah:HalfCheetahEnv',
-    max_episode_steps=300,
 )
 
 register(
     id='LearnedMountainCarContinuous-v0',
     entry_point='envs.mountain_car:MountainCar',
-    max_episode_steps=300,
 )
 
 register(
     id='LearnedInvertedPendulum-v4',
     entry_point='envs.inverted_pendulum:InvertedPendulum',
-    max_episode_steps=300,
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -66,12 +67,14 @@ class HIPRL:
         self.episodes = config['episodes']
         self.steps = config['steps']
 
+        self.config = config
+
         self.base_model = EnsembleTransitionModel(self.state_dim, self.action_dim).to(device)
         self.hallucinated_model = HallucinatedModel(self.base_model).to(device)
         self.reward_model = RewardModel(self.state_dim, self.action_dim + self.state_dim).to(device)
 
         self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
-        self.model = SAC("MlpPolicy", self.learned_env, verbose=1)
+        self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -99,15 +102,49 @@ class HIPRL:
             if episode + 1 >= 6:
                 self.learned_env.close()
                 self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
-                self.model = SAC("MlpPolicy", self.learned_env, verbose=1)
-                # for i in range(10):
-                #     # sample a state from the trajectories
-                #     traj= np.random.randint(len(self.T))
-                #     s = np.random.randint((len(self.T[traj]) // 4)) * 2
-                #     self.learned_env.set_current_state(self.T[traj][s])
-                #     self.model.learn(total_timesteps=10000)
-                self.learned_env.set_current_state(self.learned_env.reset()[0])
-                self.model.learn(total_timesteps=25000, callback=WandbCallback(model_save_path=self.foldername))
+
+                if self.env_name == "HalfCheetah-v4":
+                    self.model = PPO(
+                        "MlpPolicy",
+                        self.learned_env,
+                        verbose=1,
+                        learning_rate=self.config['learning_rate'],
+                        n_steps=self.config['n_steps'],
+                        batch_size=self.config['batch_size'],
+                        n_epochs=self.config['n_epochs'],
+                        gamma=self.config['gamma'],
+                        gae_lambda=self.config['gae_lambda'],
+                        clip_range=self.config['clip_range'],
+                        ent_coef=self.config['ent_coef'],
+                        vf_coef=self.config['vf_coef'],
+                        max_grad_norm=self.config['max_grad_norm'],
+                        policy_kwargs={"log_std_init": -2, "ortho_init": False, "activation_fn": torch.nn.ReLU, "net_arch": [{"pi": [256, 256], "vf": [256, 256]}]},
+                    )
+                elif self.env_name == "Ant-v4":
+                    self.model = TD3(
+                        "MlpPolicy",
+                        self.learned_env,
+                        verbose=1,
+                        learning_starts=self.config['learning_starts'],
+                    )
+                else:
+                    self.model = PPO(
+                        "MlpPolicy",
+                        self.learned_env,
+                        verbose=1,
+                        learning_rate=self.config['learning_rate'],
+                        n_steps=self.config['n_steps'],
+                        batch_size=self.config['batch_size'],
+                        n_epochs=self.config['n_epochs'],
+                        gamma=self.config['gamma'],
+                        gae_lambda=self.config['gae_lambda'],
+                        clip_range=self.config['clip_range'],
+                        ent_coef=self.config['ent_coef'],
+                        vf_coef=self.config['vf_coef'],
+                        max_grad_norm=self.config['max_grad_norm'],
+                    )
+
+                self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername))
 
                 # evaluate policy
                 rewards = self.evaluate_policy(eval_episodes=10)

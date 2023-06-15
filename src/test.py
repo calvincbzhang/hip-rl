@@ -1,20 +1,45 @@
 import gymnasium as gym
 import numpy as np
+import argparse
 import stable_baselines3 as sb3
+import yaml
+
 
 if __name__ == "__main__":
 
-    env = gym.make("Swimmer-v4", render_mode="human")
-    model = sb3.SAC.load("models/Swimmer-v4")
+    # parse arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='swimmer.yaml', help='config file')
+    args = parser.parse_args()
+
+    # load config file
+    with open('configs/' + args.config) as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    env_name = config["env_name"]
+
+    env = gym.make(env_name, render_mode="human")
+    model = sb3.PPO.load("models/PPO" + env_name )
     obs, _ = env.reset()
 
-    cum_r = 0
+    rewards = []
 
-    for i in range(1000):
-        action, _states = model.predict(obs, deterministic=False)
-        obs, rewards, _, _, _ = env.step(action[:env.action_space.shape[0]])
-        cum_r += rewards
+    for i in range(10):
+        
+        obs, _ = env.reset()
+        cumulative_reward = 0
 
-    print("Cumulative reward: ", cum_r)
-    
-    # env.close()
+        for t in range(1000):
+
+            action, _ = model.predict(obs, deterministic=False)
+            obs, reward, terminated, _, info = env.step(action[:env.action_space.shape[0]])
+            cumulative_reward += reward
+            env.render()
+
+            if terminated:
+                break
+
+        rewards.append(cumulative_reward)
+
+    print("Average reward: ", np.mean(rewards))
+    print("Standard deviation reward: ", np.std(rewards))

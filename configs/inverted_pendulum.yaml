@@ -2,3 +2,16 @@ env_name: InvertedPendulum-v4
 
 episodes: 1000
 steps: 1000
+
+learning_rate: 0.00025
+n_steps: 500
+batch_size: 256
+n_epochs: 5
+gamma: 0.999
+gae_lambda: 0.9
+clip_range: 0.4
+ent_coef: 1.5e-7
+vf_coef: 0.2
+max_grad_norm: 0.3
+
+total_timesteps: 500000

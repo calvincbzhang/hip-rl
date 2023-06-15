@@ -1,4 +1,17 @@
 env_name: HalfCheetah-v4
 
 episodes: 1000
-steps: 250
+steps: 1000
+
+learning_rate: 1.0633e-05
+n_steps: 512
+batch_size: 64
+n_epochs: 20
+gamma: 0.98
+gae_lambda: 0.92
+clip_range: 0.1
+ent_coef: 0.000401762
+vf_coef: 0.58096
+max_grad_norm: 0.8
+
+total_timesteps: 1000000

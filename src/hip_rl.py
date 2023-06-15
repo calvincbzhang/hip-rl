@@ -11,7 +11,7 @@ import wandb
 
 import gymnasium as gym
 
-from stable_baselines3 import PPO
+from stable_baselines3 import SAC
 
 # Set a fixed seed
 seed = 42 
@@ -28,25 +28,25 @@ from gymnasium.envs.registration import register
 register(
     id='LearnedSwimmer-v4',
     entry_point='envs.swimmer:SwimmerEnv',
-    max_episode_steps=1000,
+    max_episode_steps=300,
 )
 
 register(
     id='LearnedHalfCheetah-v4',
     entry_point='envs.half_cheetah:HalfCheetahEnv',
-    max_episode_steps=1000,
+    max_episode_steps=300,
 )
 
 register(
     id='LearnedMountainCarContinuous-v0',
     entry_point='envs.mountain_car:MountainCar',
-    max_episode_steps=1000,
+    max_episode_steps=300,
 )
 
 register(
     id='LearnedInvertedPendulum-v4',
     entry_point='envs.inverted_pendulum:InvertedPendulum',
-    max_episode_steps=1000,
+    max_episode_steps=300,
 )
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -70,7 +70,7 @@ class HIPRL:
         self.reward_model = RewardModel(self.state_dim, self.action_dim + self.state_dim).to(device)
 
         self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
-        self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
+        self.model = SAC("MlpPolicy", self.learned_env, verbose=1)
 
         # trajectories, preferences and rewards
         self.T = []
@@ -98,7 +98,7 @@ class HIPRL:
             if episode + 1 >= 6:
                 self.learned_env.close()
                 self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
-                self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
+                self.model = SAC("MlpPolicy", self.learned_env, verbose=1)
                 # for i in range(10):
                 #     # sample a state from the trajectories
                 #     traj= np.random.randint(len(self.T))
@@ -106,7 +106,7 @@ class HIPRL:
                 #     self.learned_env.set_current_state(self.T[traj][s])
                 #     self.model.learn(total_timesteps=10000)
                 self.learned_env.set_current_state(self.learned_env.reset()[0])
-                self.model.learn(total_timesteps=100000)
+                self.model.learn(total_timesteps=25000)
 
                 # evaluate policy
                 rewards = self.evaluate_policy(eval_episodes=10)

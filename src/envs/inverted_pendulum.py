@@ -29,3 +29,15 @@ class InvertedPendulum(InvertedPendulumEnv):
     
     def set_current_state(self, state):
         self.state = state
+
+    def reset_model(self):
+        qpos = self.init_qpos + self.np_random.uniform(
+            size=self.model.nq, low=-0.01, high=0.01
+        )
+        qvel = self.init_qvel + self.np_random.uniform(
+            size=self.model.nv, low=-0.01, high=0.01
+        )
+        self.set_state(qpos, qvel)
+        obs = self._get_obs()
+        self.state = obs
+        return obs

@@ -27,3 +27,21 @@ class HalfCheetahEnv(HalfCheetahEnv):
     
     def set_current_state(self, state):
         self.state = state
+
+    def reset_model(self):
+        noise_low = -self._reset_noise_scale
+        noise_high = self._reset_noise_scale
+
+        qpos = self.init_qpos + self.np_random.uniform(
+            low=noise_low, high=noise_high, size=self.model.nq
+        )
+        qvel = (
+            self.init_qvel
+            + self._reset_noise_scale * self.np_random.standard_normal(self.model.nv)
+        )
+
+        self.set_state(qpos, qvel)
+
+        observation = self._get_obs()
+        self.state = observation
+        return observation

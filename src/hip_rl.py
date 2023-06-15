@@ -57,6 +57,11 @@ register(
     entry_point='envs.inverted_pendulum:InvertedPendulum',
 )
 
+register(
+    id='LearnedPendulum-v1',
+    entry_point='envs.pendulum:PendulumEnv',
+)
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
@@ -81,7 +86,7 @@ class HIPRL:
 
         self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
 
-        if self.env_name == "HalfCheetah-v4":
+        if self.env_name == "HalfCheetah-v4" or self.env_name == "Hopper-v4":
             self.model = PPO(
                 "MlpPolicy",
                 self.learned_env,
@@ -99,30 +104,40 @@ class HIPRL:
                 policy_kwargs={"log_std_init": -2, "ortho_init": False, "activation_fn": torch.nn.ReLU, "net_arch": [{"pi": [256, 256], "vf": [256, 256]}]},
             )
         elif self.env_name == "Ant-v4":
-            self.model = TD3(
+            self.model = PPO(
                 "MlpPolicy",
                 self.learned_env,
                 verbose=1,
-                learning_starts=self.config['learning_starts'],
+                # learning_starts=self.config['learning_starts'],
             )
         elif self.env_name == "MountainCarContinuous-v0":
-            self.model = TD3(
-                "MlpPolicy",
-                self.learned_env,
-                verbose=1,
-                action_noise=sb3.common.noise.OrnsteinUhlenbeckActionNoise(mean=np.zeros(self.action_dim), sigma=0.5 * np.ones(self.action_dim)),
-            )
-        elif self.env_name == "Hopper-v4":
-            self.model = TD3(
+            self.model = PPO(
                 "MlpPolicy",
                 self.learned_env,
                 verbose=1,
                 learning_rate=self.config['learning_rate'],
-                learning_starts=self.config['learning_starts'],
+                n_steps=self.config['n_steps'],
                 batch_size=self.config['batch_size'],
-                train_freq=self.config['train_freq'],
-                gradient_steps=self.config['gradient_steps'],
+                n_epochs=self.config['n_epochs'],
+                gamma=self.config['gamma'],
+                gae_lambda=self.config['gae_lambda'],
+                clip_range=self.config['clip_range'],
+                ent_coef=self.config['ent_coef'],
+                vf_coef=self.config['vf_coef'],
+                max_grad_norm=self.config['max_grad_norm'],
+                policy_kwargs={"log_std_init": -3.29, "ortho_init": False},
             )
+        # elif self.env_name == "Hopper-v4":
+        #     self.model = TD3(
+        #         "MlpPolicy",
+        #         self.learned_env,
+        #         verbose=1,
+        #         learning_rate=self.config['learning_rate'],
+        #         learning_starts=self.config['learning_starts'],
+        #         batch_size=self.config['batch_size'],
+        #         train_freq=self.config['train_freq'],
+        #         gradient_steps=self.config['gradient_steps'],
+        #     )
         else:
             self.model = PPO(
                 "MlpPolicy",

@@ -14,4 +14,4 @@ ent_coef: 1.5e-7
 vf_coef: 0.2
 max_grad_norm: 0.3
 
-total_timesteps: 500000
+total_timesteps: 100000

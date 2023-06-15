@@ -168,7 +168,7 @@ class HIPRL:
                         max_grad_norm=self.config['max_grad_norm'],
                     )
 
-                self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername))
+                self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername), progress_bar=True)
 
                 # evaluate policy
                 rewards = self.evaluate_policy(eval_episodes=10)

@@ -1,0 +1,12 @@
+env_name: Hopper-v4
+
+episodes: 1000
+steps: 1000
+
+learning_rate: 0.0003
+learning_starts: 10000
+batch_size: 256
+train_freq: 1
+gradient_steps: 1
+
+total_timesteps: 1000000

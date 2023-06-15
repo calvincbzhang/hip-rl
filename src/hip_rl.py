@@ -43,6 +43,11 @@ register(
 )
 
 register(
+    id='LearnedHopper-v4',
+    entry_point='envs.hopper:HopperEnv',
+)
+
+register(
     id='LearnedMountainCarContinuous-v0',
     entry_point='envs.mountain_car:MountainCar',
 )
@@ -134,6 +139,17 @@ class HIPRL:
                         self.learned_env,
                         verbose=1,
                         action_noise=sb3.common.noise.OrnsteinUhlenbeckActionNoise(mean=np.zeros(self.action_dim), sigma=0.5 * np.ones(self.action_dim)),
+                    )
+                elif self.env_name == "Hopper-v4":
+                    self.model = TD3(
+                        "MlpPolicy",
+                        self.learned_env,
+                        verbose=1,
+                        learning_rate=self.config['learning_rate'],
+                        learning_starts=self.config['learning_starts'],
+                        batch_size=self.config['batch_size'],
+                        train_freq=self.config['train_freq'],
+                        gradient_steps=self.config['gradient_steps'],
                     )
                 else:
                     self.model = PPO(

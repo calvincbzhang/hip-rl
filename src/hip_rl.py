@@ -80,7 +80,65 @@ class HIPRL:
         self.reward_model = RewardModel(self.state_dim, self.action_dim + self.state_dim).to(device)
 
         self.learned_env = gym.make("Learned" + self.env_name, dynamics_model=self.hallucinated_model, reward_fn=self.reward_model)
-        self.model = PPO("MlpPolicy", self.learned_env, verbose=1)
+
+        if self.env_name == "HalfCheetah-v4":
+            self.model = PPO(
+                "MlpPolicy",
+                self.learned_env,
+                verbose=1,
+                learning_rate=self.config['learning_rate'],
+                n_steps=self.config['n_steps'],
+                batch_size=self.config['batch_size'],
+                n_epochs=self.config['n_epochs'],
+                gamma=self.config['gamma'],
+                gae_lambda=self.config['gae_lambda'],
+                clip_range=self.config['clip_range'],
+                ent_coef=self.config['ent_coef'],
+                vf_coef=self.config['vf_coef'],
+                max_grad_norm=self.config['max_grad_norm'],
+                policy_kwargs={"log_std_init": -2, "ortho_init": False, "activation_fn": torch.nn.ReLU, "net_arch": [{"pi": [256, 256], "vf": [256, 256]}]},
+            )
+        elif self.env_name == "Ant-v4":
+            self.model = TD3(
+                "MlpPolicy",
+                self.learned_env,
+                verbose=1,
+                learning_starts=self.config['learning_starts'],
+            )
+        elif self.env_name == "MountainCarContinuous-v0":
+            self.model = TD3(
+                "MlpPolicy",
+                self.learned_env,
+                verbose=1,
+                action_noise=sb3.common.noise.OrnsteinUhlenbeckActionNoise(mean=np.zeros(self.action_dim), sigma=0.5 * np.ones(self.action_dim)),
+            )
+        elif self.env_name == "Hopper-v4":
+            self.model = TD3(
+                "MlpPolicy",
+                self.learned_env,
+                verbose=1,
+                learning_rate=self.config['learning_rate'],
+                learning_starts=self.config['learning_starts'],
+                batch_size=self.config['batch_size'],
+                train_freq=self.config['train_freq'],
+                gradient_steps=self.config['gradient_steps'],
+            )
+        else:
+            self.model = PPO(
+                "MlpPolicy",
+                self.learned_env,
+                verbose=1,
+                learning_rate=self.config['learning_rate'],
+                n_steps=self.config['n_steps'],
+                batch_size=self.config['batch_size'],
+                n_epochs=self.config['n_epochs'],
+                gamma=self.config['gamma'],
+                gae_lambda=self.config['gae_lambda'],
+                clip_range=self.config['clip_range'],
+                ent_coef=self.config['ent_coef'],
+                vf_coef=self.config['vf_coef'],
+                max_grad_norm=self.config['max_grad_norm'],
+            )
 
         # trajectories, preferences and rewards
         self.T = []
@@ -109,64 +167,7 @@ class HIPRL:
                 self.learned_env.close()
                 self.learned_env = gym.make("Learned" + self.env_name, dynamics_model = self.hallucinated_model, reward_fn = self.reward_model)
 
-                if self.env_name == "HalfCheetah-v4":
-                    self.model = PPO(
-                        "MlpPolicy",
-                        self.learned_env,
-                        verbose=1,
-                        learning_rate=self.config['learning_rate'],
-                        n_steps=self.config['n_steps'],
-                        batch_size=self.config['batch_size'],
-                        n_epochs=self.config['n_epochs'],
-                        gamma=self.config['gamma'],
-                        gae_lambda=self.config['gae_lambda'],
-                        clip_range=self.config['clip_range'],
-                        ent_coef=self.config['ent_coef'],
-                        vf_coef=self.config['vf_coef'],
-                        max_grad_norm=self.config['max_grad_norm'],
-                        policy_kwargs={"log_std_init": -2, "ortho_init": False, "activation_fn": torch.nn.ReLU, "net_arch": [{"pi": [256, 256], "vf": [256, 256]}]},
-                    )
-                elif self.env_name == "Ant-v4":
-                    self.model = TD3(
-                        "MlpPolicy",
-                        self.learned_env,
-                        verbose=1,
-                        learning_starts=self.config['learning_starts'],
-                    )
-                elif self.env_name == "MountainCarContinuous-v0":
-                    self.model = TD3(
-                        "MlpPolicy",
-                        self.learned_env,
-                        verbose=1,
-                        action_noise=sb3.common.noise.OrnsteinUhlenbeckActionNoise(mean=np.zeros(self.action_dim), sigma=0.5 * np.ones(self.action_dim)),
-                    )
-                elif self.env_name == "Hopper-v4":
-                    self.model = TD3(
-                        "MlpPolicy",
-                        self.learned_env,
-                        verbose=1,
-                        learning_rate=self.config['learning_rate'],
-                        learning_starts=self.config['learning_starts'],
-                        batch_size=self.config['batch_size'],
-                        train_freq=self.config['train_freq'],
-                        gradient_steps=self.config['gradient_steps'],
-                    )
-                else:
-                    self.model = PPO(
-                        "MlpPolicy",
-                        self.learned_env,
-                        verbose=1,
-                        learning_rate=self.config['learning_rate'],
-                        n_steps=self.config['n_steps'],
-                        batch_size=self.config['batch_size'],
-                        n_epochs=self.config['n_epochs'],
-                        gamma=self.config['gamma'],
-                        gae_lambda=self.config['gae_lambda'],
-                        clip_range=self.config['clip_range'],
-                        ent_coef=self.config['ent_coef'],
-                        vf_coef=self.config['vf_coef'],
-                        max_grad_norm=self.config['max_grad_norm'],
-                    )
+                self.model.set_env(self.learned_env)
 
                 self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername), progress_bar=True)
 

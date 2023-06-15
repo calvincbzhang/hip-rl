@@ -66,12 +66,12 @@ class HallucinatedModel(nn.Module):
 
         return mean + self.beta * (optimism_var * torch.sqrt(stddev))
     
-    def train_model(self, T, epochs=1500, lr=0.001):
+    def train_model(self, T, epochs=50, lr=0.001):
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         if len(T) > 30:
             # use last trajectory and 29 random ones
             T = [T[-1]] + random.sample(T[:-1], 29)
-        for epoch in range(epochs):
+        for epoch in range(epochs * len(T)):
 
             total_loss = 0.0
 
@@ -87,7 +87,7 @@ class HallucinatedModel(nn.Module):
             total_loss /= len(T)
 
             if (epoch+1) % 100 == 0:
-                print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
-                logging.info(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss}")
+                print(f"Epoch {epoch+1}/{epochs * len(T)}, Loss: {total_loss}")
+                logging.info(f"Epoch {epoch+1}/{epochs * len(T)}, Loss: {total_loss}")
 
             # wandb.log({"Transition Model Loss": total_loss})

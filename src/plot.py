@@ -31,7 +31,7 @@ if __name__ == "__main__":
     reward_deviation = pd.read_csv("data/" + env_name + "_deviation.csv", skiprows=0).iloc[:, 1]
 
     # plot reward with deviation
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(4, 3))
     plt.plot(reward, label="average reward")
     plt.fill_between(reward.index, reward - reward_deviation, reward + reward_deviation, alpha=0.2)
     plt.xlabel("Episode")
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     transition_deviation = pd.read_csv("data/" + env_name + "_transition.csv", skiprows=0).iloc[:, 1]
     
     # plot transition deviation
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(4, 3))
     plt.plot(transition_deviation, label="transition deviation")
     plt.xlabel("Episode")
     plt.ylabel("Transition Deviation")
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     reward_deviation = pd.read_csv("data/" + env_name + "_preference.csv", skiprows=0).iloc[:, 1]
 
     # plot reward deviation
-    plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(4, 3))
     plt.plot(reward_deviation, label="preference deviation")
     plt.xlabel("Episode")
     plt.ylabel("Preference Deviation")

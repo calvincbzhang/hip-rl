@@ -4,9 +4,6 @@ import argparse
 import stable_baselines3 as sb3
 import yaml
 
-from stable_baselines3.common.vec_env import VecVideoRecorder, DummyVecEnv
-from gymnasium.wrappers.record_video import RecordVideo
-
 
 if __name__ == "__main__":
 
@@ -20,8 +17,10 @@ if __name__ == "__main__":
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     env_name = config["env_name"]
-    env = RecordVideo(gym.make(env_name, render_mode="rgb_array"), video_length=1000, video_folder="videos/", episode_trigger=lambda x: x == 0, name_prefix=env_name)
-    model = sb3.PPO.load("models/" + env_name)
+
+    env = gym.make(env_name, render_mode="human")
+    model = sb3.PPO.load("models/PPO_" + env_name )
+    obs, _ = env.reset()
 
     rewards = []
 
@@ -44,5 +43,3 @@ if __name__ == "__main__":
 
     print("Average reward: ", np.mean(rewards))
     print("Standard deviation reward: ", np.std(rewards))
-
-    env.close()

@@ -62,6 +62,11 @@ register(
     entry_point='envs.pendulum:PendulumEnv',
 )
 
+register(
+    id='LearnedReacher-v4',
+    entry_point='envs.reacher:ReacherEnv',
+)
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 epsilon = 0.1
 
@@ -184,7 +189,7 @@ class HIPRL:
 
                 self.model.set_env(self.learned_env)
 
-                self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername), progress_bar=True)
+                self.model.learn(total_timesteps=self.config['total_timesteps'], callback=WandbCallback(model_save_path=self.foldername, model_save_freq=1), progress_bar=True)
 
                 # evaluate policy
                 rewards = self.evaluate_policy(eval_episodes=10)

@@ -1,5 +1,7 @@
 env_name: InvertedPendulum-v4
 
+continue: False
+
 episodes: 1000
 steps: 1000
 

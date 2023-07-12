@@ -1,5 +1,7 @@
 env_name: Reacher-v4
 
+continue: False
+
 episodes: 1000
 steps: 1000
 

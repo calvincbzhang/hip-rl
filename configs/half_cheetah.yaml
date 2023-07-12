@@ -1,6 +1,6 @@
 env_name: HalfCheetah-v4
 
-continue: True
+continue: False
 
 episodes: 1000
 steps: 1000

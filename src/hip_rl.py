@@ -15,16 +15,6 @@ import stable_baselines3 as sb3
 from stable_baselines3 import PPO, TD3
 from wandb.integration.sb3 import WandbCallback
 
-# Set a fixed seed
-seed = 42 
-
-random.seed(seed)
-np.random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-
 from gymnasium.envs.registration import register
 
 register(

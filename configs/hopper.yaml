@@ -9,7 +9,7 @@ steps: 1000
 # train_freq: 1
 # gradient_steps: 1
 
-continue: True
+continue: False
 
 learning_rate: 9.80828e-05
 n_steps: 512

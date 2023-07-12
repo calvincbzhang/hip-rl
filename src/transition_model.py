@@ -58,7 +58,7 @@ class EnsembleTransitionModel(nn.Module):
     """
     Ensamble of TransitionModel with N models (implements a probabilistic ensemble)
     """
-    def __init__(self, state_dim, action_dim, hidden_dim=32, N=5):
+    def __init__(self, state_dim, action_dim, hidden_dim=128, N=5):
         super(EnsembleTransitionModel, self).__init__()
 
         self.state_dim = state_dim

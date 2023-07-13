@@ -34,7 +34,7 @@ class TransitionModel(nn.Module):
         action = torch.tensor(action, dtype=torch.float32)
         x = torch.cat((state, action), dim=-1)
         x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
+        x = self.linear2(x)
 
         mean = self.mean_output(x)
         mean = torch.clamp(mean, -1000, 1000)

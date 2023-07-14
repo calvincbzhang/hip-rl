@@ -97,7 +97,7 @@ class HIPRL:
                 self.model = PPO(
                     "MlpPolicy",
                     self.learned_env,
-                    verbose=1,
+                    verbose=0,
                     learning_rate=self.config['learning_rate'],
                     n_steps=self.config['n_steps'],
                     batch_size=self.config['batch_size'],
@@ -114,14 +114,14 @@ class HIPRL:
                 self.model = PPO(
                     "MlpPolicy",
                     self.learned_env,
-                    verbose=1,
+                    verbose=0,
                     # learning_starts=self.config['learning_starts'],
                 )
             elif self.env_name == "MountainCarContinuous-v0":
                 self.model = PPO(
                     "MlpPolicy",
                     self.learned_env,
-                    verbose=1,
+                    verbose=0,
                     learning_rate=self.config['learning_rate'],
                     n_steps=self.config['n_steps'],
                     batch_size=self.config['batch_size'],
@@ -138,7 +138,7 @@ class HIPRL:
             #     self.model = TD3(
             #         "MlpPolicy",
             #         self.learned_env,
-            #         verbose=1,
+            #         verbose=0,
             #         learning_rate=self.config['learning_rate'],
             #         learning_starts=self.config['learning_starts'],
             #         batch_size=self.config['batch_size'],
@@ -149,7 +149,7 @@ class HIPRL:
                 self.model = PPO(
                     "MlpPolicy",
                     self.learned_env,
-                    verbose=1,
+                    verbose=0,
                     learning_rate=self.config['learning_rate'],
                     n_steps=self.config['n_steps'],
                     batch_size=self.config['batch_size'],
